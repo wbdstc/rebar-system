@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢筋隐蔽工程智能验收系统 (基于22G101平法)</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1a1c23;
+            color: #c0c0c0;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        .card {
+            background-color: #2c2f38;
+            border: 1px solid #3a3f4b;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .card-header {
+            background-color: #3a3f4b;
+            color: #fff;
+            font-weight: 600;
+            border-bottom: 1px solid #48505e;
+            padding: 12px 15px;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #22252b;
+            border: 1px solid #444;
+            color: #fff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background-color: #2c2f38;
+            color: #fff;
+            border-color: #0d6efd;
+            box-shadow: none;
+        }
+
+        .small-label {
+            font-size: 0.8rem;
+            color: #8b9bb4;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+            min-height: 750px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* 悬浮图例 - 工程蓝图风格 */
+        .legend-box {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(18, 28, 45, 0.9);
+            padding: 15px;
+            border: 1px solid #0d6efd;
+            border-radius: 4px;
+            z-index: 100;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #d0d0d0;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-fluid px-4 py-4">
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
+            <div>
+                <h3 class="text-white fw-bold"><i class="fas fa-drafting-compass"></i> 钢筋隐蔽工程智能验收系统</h3>
+                <div class="text-secondary small">遵循 GB50204-2015 验收规范 & 22G101 平法图集</div>
+            </div>
+            <span class="badge bg-primary fs-6">V7.0 平法专业版</span>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-3">
+
+                <div class="card border-primary">
+                    <div class="card-header text-primary"><i class="fas fa-tasks"></i> 1. 平法参数设定</div>
+                    <div class="card-body">
+                        <label class="small-label">构件类型 (Component Type)</label>
+                        <select class="form-select mb-3" id="componentType" onchange="updatePingFaUI()">
+                            <option value="slab">板/墙 (单一种类间距)</option>
+                            <option value="beam">梁/柱 (加密/非加密复式间距)</option>
+                        </select>
+
+                        <div id="slabSettings">
+                            <label class="small-label">设计间距 (Design Spacing)</label>
+                            <select class="form-select mb-2" id="slabDist">
+                                <option value="100">@100 (常用)</option>
+                                <option value="125">@125</option>
+                                <option value="150" selected>@150 (标准)</option>
+                                <option value="180">@180</option>
+                                <option value="200">@200 (常用)</option>
+                                <option value="250">@250</option>
+                            </select>
+                        </div>
+
+                        <div id="beamSettings" style="display:none;">
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <label class="small-label text-info">加密区 (End)</label>
+                                    <select class="form-select form-select-sm" id="beamDense">
+                                        <option value="100" selected>@100</option>
+                                        <option value="75">@75</option>
+                                    </select>
+                                </div>
+                                <div class="col-6">
+                                    <label class="small-label text-success">非加密 (Mid)</label>
+                                    <select class="form-select form-select-sm" id="beamSparse">
+                                        <option value="200" selected>@200</option>
+                                        <option value="150">@150</option>
+                                        <option value="250">@250</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="small text-muted mt-2 border-top border-secondary pt-2">
+                                <i class="fas fa-info-circle"></i> 示例: <b>φ10@100/200</b><br>
+                                系统将自动判定间距归属。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-ruler-horizontal"></i> 2. 现场数据采集</div>
+                    <div class="card-body">
+                        <input type="file" id="fileInput" class="form-control mb-3" accept="image/*">
+
+                        <div class="btn-group w-100 mb-3">
+                            <button class="btn btn-outline-warning btn-sm" onclick="startCalibration('bottom')">
+                                标定近端 <i class="fas fa-check-circle d-none" id="iconBottom"></i>
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm" onclick="startCalibration('top')">
+                                标定远端 <i class="fas fa-check-circle d-none" id="iconTop"></i>
+                            </button>
+                        </div>
+
+                        <div class="input-group input-group-sm mb-3">
+                            <span class="input-group-text bg-dark text-secondary">参照物真值</span>
+                            <input type="number" id="refRealLength" class="form-control text-end text-white" value="80">
+                            <span class="input-group-text bg-dark text-secondary">mm</span>
+                        </div>
+
+                        <button class="btn btn-primary w-100 fw-bold" onclick="startAnalysis()">
+                            <i class="fas fa-search-plus"></i> 执行智能验收
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-sliders-h"></i> 3. 算法阈值</div>
+                    <div class="card-body">
+                        <label class="small-label d-flex justify-content-between">
+                            <span>置信度 (AI Sensitivity)</span> <span id="confVal">15%</span>
+                        </label>
+                        <input type="range" class="form-range" id="confRange" min="5" max="80" value="15"
+                            oninput="document.getElementById('confVal').innerText=this.value+'%'">
+
+                        <label class="small-label d-flex justify-content-between mt-2">
+                            <span>重叠过滤 (NMS)</span> <span id="nmsVal">50%</span>
+                        </label>
+                        <input type="range" class="form-range" id="overlapRange" min="10" max="100" value="50"
+                            oninput="document.getElementById('nmsVal').innerText=this.value+'%'">
+                    </div>
+                </div>
+
+                <div class="card bg-dark">
+                    <div class="card-body text-center p-3">
+                        <div class="row">
+                            <div class="col-6 border-end border-secondary">
+                                <div class="h3 text-white mb-0" id="countVal">-</div>
+                                <div class="small text-secondary">钢筋根数</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="h3 text-success mb-0" id="rateVal">-</div>
+                                <div class="small text-secondary">验收合格率</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-9">
+                <div class="canvas-wrapper">
+                    <div class="legend-box" id="legendContent">
+                    </div>
+                    <canvas id="mainCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let imgObj = new Image();
+
+        // 状态管理
+        let appState = {
+            predictions: [],
+            calibMode: null, calibPoints: [],
+            scaleBottom: 0, scaleTop: 0, scaleBottomY: 0, scaleTopY: 0
+        };
+
+        // UI 切换逻辑
+        function updatePingFaUI() {
+            const type = document.getElementById('componentType').value;
+            const legend = document.getElementById('legendContent');
+
+            if (type === 'slab') {
+                document.getElementById('slabSettings').style.display = 'block';
+                document.getElementById('beamSettings').style.display = 'none';
+                legend.innerHTML = `
+                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>符合设计 (@150)</div>
+                <div class="legend-item"><div class="dot" style="background:#ff1744;"></div>不符合规范</div>
+            `;
+            } else {
+                document.getElementById('slabSettings').style.display = 'none';
+                document.getElementById('beamSettings').style.display = 'block';
+                legend.innerHTML = `
+                <div class="legend-item"><div class="dot" style="background:#00bcd4;"></div>加密区 (@100)</div>
+                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>非加密区 (@200)</div>
+                <div class="legend-item"><div class="dot" style="background:#ff1744;"></div>超标/异常</div>
+            `;
+            }
+
+            // 更新图例里的数值文字
+            if (type === 'slab') {
+                const val = document.getElementById('slabDist').value;
+                legend.innerHTML = legend.innerHTML.replace(/@\d+/, `@${val}`);
+            } else {
+                const dense = document.getElementById('beamDense').value;
+                const sparse = document.getElementById('beamSparse').value;
+                legend.innerHTML = `
+                <div class="legend-item"><div class="dot" style="background:#00bcd4;"></div>加密区 (@${dense})</div>
+                <div class="legend-item"><div class="dot" style="background:#00e676;"></div>非加密区 (@${sparse})</div>
+                <div class="legend-item"><div class="dot" style="background:#ff1744;"></div>不符合规范</div>
+            `;
+            }
+
+            if (appState.predictions.length > 0) redrawCanvas();
+        }
+
+        // 监听下拉框变化
+        document.getElementById('slabDist').addEventListener('change', updatePingFaUI);
+        document.getElementById('beamDense').addEventListener('change', updatePingFaUI);
+        document.getElementById('beamSparse').addEventListener('change', updatePingFaUI);
+
+        // 初始化
+        updatePingFaUI();
+
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                imgObj.onload = function () {
+                    appState.predictions = [];
+                    canvas.width = imgObj.width; canvas.height = imgObj.height;
+                    redrawCanvas();
+                }
+                imgObj.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // 标定逻辑 (复用 V5)
+        function startCalibration(mode) {
+            if (!imgObj.src) return alert("请先上传图片");
+            appState.calibMode = mode;
+            appState.calibPoints = [];
+            alert("请在图片对应位置点击参照物两端");
+            canvas.style.cursor = "crosshair";
+        }
+        canvas.addEventListener('mousedown', function (e) {
+            if (!appState.calibMode) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            appState.calibPoints.push({ x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY });
+            if (appState.calibPoints.length === 2) {
+                finishCalibration();
+                canvas.style.cursor = "default";
+            }
+            redrawCanvas();
+        });
+        function finishCalibration() {
+            const p1 = appState.calibPoints[0];
+            const p2 = appState.calibPoints[1];
+            const dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+            const real = parseFloat(document.getElementById('refRealLength').value);
+            const scale = dist / real;
+            const avgY = (p1.y + p2.y) / 2;
+            if (appState.calibMode === 'bottom') {
+                appState.scaleBottom = scale; appState.scaleBottomY = avgY;
+                document.getElementById('iconBottom').classList.remove('d-none');
+            } else {
+                appState.scaleTop = scale; appState.scaleTopY = avgY;
+                document.getElementById('iconTop').classList.remove('d-none');
+            }
+            appState.calibMode = null; appState.calibPoints = [];
+        }
+        function getScaleAtY(y) {
+            if (appState.scaleBottom === 0 && appState.scaleTop === 0) return 1;
+            if (appState.scaleBottom === 0) return appState.scaleTop;
+            if (appState.scaleTop === 0) return appState.scaleBottom;
+            const range = appState.scaleBottomY - appState.scaleTopY;
+            if (Math.abs(range) < 10) return appState.scaleBottom;
+            const ratio = (y - appState.scaleTopY) / range;
+            return appState.scaleTop + (appState.scaleBottom - appState.scaleTop) * ratio;
+        }
+
+        async function startAnalysis() {
+            if (!imgObj.src) return alert("请上传图片");
+            const conf = document.getElementById('confRange').value;
+            const overlap = document.getElementById('overlapRange').value;
+            const btn = document.querySelector('button[onclick="startAnalysis()"]');
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 平法解析中...';
+            btn.disabled = true;
+
+            try {
+                const maxSide = 1280;
+                let w = imgObj.width, h = imgObj.height;
+                if (w > maxSide || h > maxSide) { const r = Math.min(maxSide / w, maxSide / h); w *= r; h *= r; }
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = w; tempCanvas.height = h;
+                tempCanvas.getContext('2d').drawImage(imgObj, 0, 0, w, h);
+
+                tempCanvas.toBlob(async function (blob) {
+                    const formData = new FormData();
+                    formData.append('image', blob);
+                    const res = await fetch(`/analyze?conf=${conf}&overlap=${overlap}`, { method: 'POST', body: formData });
+                    const data = await res.json();
+                    if (data.predictions) {
+                        appState.predictions = data.predictions;
+                        redrawCanvas();
+                    }
+                    btn.innerHTML = oldHtml;
+                    btn.disabled = false;
+                }, 'image/jpeg', 0.85);
+            } catch (err) {
+                btn.innerHTML = oldHtml; btn.disabled = false;
+            }
+        }
+
+        // --- V7.0 平法逻辑绘图 ---
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgObj, 0, 0);
+
+            // 绘制标定点
+            if (appState.calibPoints.length > 0) {
+                ctx.strokeStyle = "cyan"; ctx.lineWidth = 2; ctx.beginPath();
+                appState.calibPoints.forEach(p => { ctx.lineTo(p.x, p.y); ctx.fillStyle = "cyan"; ctx.fillRect(p.x - 3, p.y - 3, 6, 6) });
+                ctx.stroke();
+            }
+
+            if (appState.predictions.length > 0) {
+                const type = document.getElementById('componentType').value;
+                const tolerance = 15; // 允许误差 ±15mm
+
+                // 1. 获取平法标准值
+                let validSets = []; // 存储合法的间距值和对应的颜色
+
+                if (type === 'slab') {
+                    // 板：只有一个标准值
+                    const val = parseFloat(document.getElementById('slabDist').value);
+                    validSets.push({ val: val, color: "#00e676", label: "OK" });
+                } else {
+                    // 梁：有两个标准值 (加密 / 非加密)
+                    const dense = parseFloat(document.getElementById('beamDense').value);
+                    const sparse = parseFloat(document.getElementById('beamSparse').value);
+                    validSets.push({ val: dense, color: "#00bcd4", label: "加密" }); // 蓝
+                    validSets.push({ val: sparse, color: "#00e676", label: "普" });  // 绿
+                }
+
+                // 2. 数据分类
+                let verticals = [], horizontals = [];
+                appState.predictions.forEach(p => {
+                    // 绘制 Mask (减淡)
+                    if (p.points && p.points.length > 0) {
+                        ctx.beginPath(); ctx.moveTo(p.points[0].x, p.points[0].y);
+                        for (let i = 1; i < p.points.length; i++) ctx.lineTo(p.points[i].x, p.points[i].y);
+                        ctx.fillStyle = "rgba(255,215,0,0.15)"; ctx.fill();
+                    }
+                    if (p.height > p.width) verticals.push(p); else horizontals.push(p);
+                });
+                verticals.sort((a, b) => a.x - b.x); horizontals.sort((a, b) => a.y - b.y);
+
+                let passCount = 0, count = 0;
+
+                function measure(items, isVertical) {
+                    for (let i = 0; i < items.length - 1; i++) {
+                        let p1 = items[i]; let p2 = items[i + 1];
+
+                        // 简单投影重叠检查
+                        let isAligned = false;
+                        if (isVertical) {
+                            let yStart = Math.max(p1.y - p1.height / 2, p2.y - p2.height / 2);
+                            let yEnd = Math.min(p1.y + p1.height / 2, p2.y + p2.height / 2);
+                            if (yEnd > yStart) isAligned = true;
+                        } else {
+                            let xStart = Math.max(p1.x - p1.width / 2, p2.x - p2.width / 2);
+                            let xEnd = Math.min(p1.x + p1.width / 2, p2.x + p2.width / 2);
+                            if (xEnd > xStart) isAligned = true;
+                        }
+                        if (!isAligned) continue;
+
+                        let distPx = isVertical ? (p2.x - p1.x) : (p2.y - p1.y);
+                        if (Math.abs(distPx) < 10) continue;
+
+                        let scale = getScaleAtY((p1.y + p2.y) / 2);
+                        let distMm = Math.abs(distPx) / scale;
+
+                        // --- 平法判定逻辑 ---
+                        let match = null;
+                        // 遍历所有允许的标准值，看它符合哪一个
+                        for (let set of validSets) {
+                            if (Math.abs(distMm - set.val) <= tolerance) {
+                                match = set;
+                                break;
+                            }
+                        }
+
+                        // 决定颜色和标签
+                        let color = "#ff1744"; // 默认红
+                        let labelText = distMm.toFixed(0);
+
+                        if (match) {
+                            isPass = true;
+                            color = match.color;
+                            labelText += match.label; // e.g., "100加密"
+                            passCount++;
+                        }
+
+                        // 智能屏蔽：如果距离太离谱(>3倍最大值)，不显示
+                        let maxStd = Math.max(...validSets.map(s => s.val));
+                        if (distMm > maxStd * 2.5) continue;
+
+                        count++;
+
+                        // 绘图
+                        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
+                        let drawX, drawY;
+                        if (isVertical) {
+                            let my = (p1.y + p2.y) / 2; drawX = (p1.x + p2.x) / 2; drawY = my;
+                            ctx.moveTo(p1.x, my); ctx.lineTo(p2.x, my);
+                            ctx.moveTo(p1.x, my - 3); ctx.lineTo(p1.x, my + 3);
+                            ctx.moveTo(p2.x, my - 3); ctx.lineTo(p2.x, my + 3);
+                        } else {
+                            let mx = (p1.x + p2.x) / 2; drawX = mx; drawY = (p1.y + p2.y) / 2;
+                            ctx.moveTo(mx, p1.y); ctx.lineTo(mx, p2.y);
+                            ctx.moveTo(mx - 3, p1.y); ctx.lineTo(mx + 3, p1.y);
+                            ctx.moveTo(mx - 3, p2.y); ctx.lineTo(mx + 3, p2.y);
+                        }
+                        ctx.stroke();
+
+                        // 文字背景
+                        ctx.font = "bold 12px Arial";
+                        let w = ctx.measureText(labelText).width;
+                        ctx.fillStyle = "rgba(10,10,10,0.8)";
+                        ctx.fillRect(drawX - w / 2 - 2, drawY - 8, w + 4, 16);
+                        ctx.fillStyle = color;
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.fillText(labelText, drawX, drawY);
+                    }
+                }
+
+                measure(verticals, true);
+                measure(horizontals, false);
+
+                document.getElementById('countVal').innerText = verticals.length + horizontals.length;
+                let rate = count > 0 ? ((passCount / count) * 100).toFixed(0) : 0;
+                document.getElementById('rateVal').innerText = rate + "%";
+            }
+        }
+    </script>
+</body>
+
+</html>
