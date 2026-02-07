@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钢筋工程全生命周期智能管控平台</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0f1419 0%, #1a2332 50%, #0d1117 100%);
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .hero {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo-icon {
+            font-size: 4rem;
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+        }
+
+        .logo-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: 2px;
+        }
+
+        .logo-subtitle {
+            color: #6b7c93;
+            font-size: 1rem;
+        }
+
+        .version-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin-top: 15px;
+        }
+
+        .cards-container {
+            display: flex;
+            gap: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 900px;
+        }
+
+        .func-card {
+            width: 380px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(100, 116, 139, 0.3);
+            border-radius: 16px;
+            padding: 40px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .func-card:hover {
+            transform: translateY(-8px);
+            border-color: #0066ff;
+            box-shadow: 0 20px 40px rgba(0, 102, 255, 0.2);
+        }
+
+        .func-card .icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 25px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 102, 255, 0.1));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+        }
+
+        .func-card.spacing .icon {
+            color: #00d4ff;
+        }
+
+        .func-card.counting .icon {
+            color: #ff6b35;
+        }
+
+        .func-card h3 {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .func-card p {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .func-card .features {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .func-card .feature-tag {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: #475569;
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="hero">
+        <div class="logo-section">
+            <div class="logo-icon"><i class="fas fa-project-diagram"></i></div>
+            <h1 class="logo-title">钢筋工程智能管控平台</h1>
+            <p class="logo-subtitle">AI 驱动的全生命周期质量控制解决方案</p>
+            <span class="version-badge">V10.0 双核版</span>
+        </div>
+
+        <div class="cards-container">
+            <a href="index.html?mode=spacing" class="func-card spacing">
+                <div class="icon"><i class="fas fa-border-all"></i></div>
+                <h3>隐蔽验收</h3>
+                <p>智能识别钢筋网格，自动测量间距，检验平法标注合规性</p>
+                <div class="features">
+                    <span class="feature-tag">间距检测</span>
+                    <span class="feature-tag">平法复核</span>
+                    <span class="feature-tag">合格率统计</span>
+                </div>
+            </a>
+
+            <a href="index.html?mode=counting" class="func-card counting">
+                <div class="icon"><i class="fas fa-layer-group"></i></div>
+                <h3>进场验收</h3>
+                <p>端面图像识别，精准计数钢筋根数，测量直径规格分布</p>
+                <div class="features">
+                    <span class="feature-tag">自动计数</span>
+                    <span class="feature-tag">直径测量</span>
+                    <span class="feature-tag">规格分类</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2026 钢筋工程智能管控平台 · Powered by AI Vision
+    </div>
+</body>
+
+</html>
