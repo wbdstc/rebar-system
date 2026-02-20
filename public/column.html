@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>柱截面合规性检测 - 钢筋工程智能管控平台</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.0/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Tesseract.js OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- SheetJS for Excel Export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <!-- jsPDF & html2canvas for PDF Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        body {
+            background-color: #1a1c23;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+            min-height: 100vh;
+        }
+
+        .card {
+            background-color: #2c2f38;
+            border: 1px solid #3a3f4b;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        .card-header {
+            background-color: #3a3f4b;
+            color: #fff;
+            border-bottom: 1px solid #48505e;
+            padding: 12px 15px;
+            font-weight: 600;
+        }
+
+        .form-control,
+        .form-select {
+            background-color: #22252b;
+            border: 1px solid #444;
+            color: #fff;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            background-color: #2c2f38;
+            color: #fff;
+            border-color: #0d6efd;
+            box-shadow: none;
+        }
+
+        .small-label {
+            font-size: 0.8rem;
+            color: #8b9bb4;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            background: #111;
+            border: 1px solid #444;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
+            min-height: 600px;
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        .legend-box {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(18, 28, 45, 0.95);
+            padding: 15px;
+            border: 1px solid #0d6efd;
+            border-radius: 4px;
+            z-index: 100;
+            font-size: 12px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 6px;
+            color: #d0d0d0;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+
+        /* 验收结果样式 */
+        .result-pass {
+            background: linear-gradient(135deg, #1b4332, #2d6a4f);
+            border: 2px solid #40c057;
+            color: #a3e635;
+        }
+
+        .result-fail {
+            background: linear-gradient(135deg, #5c1127, #8b1538);
+            border: 2px solid #ff6b6b;
+            color: #fca5a5;
+        }
+
+        .result-box {
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .result-box .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .result-box .title {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        /* 平法输入区样式 */
+        .pingfa-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .pingfa-tag {
+            display: inline-block;
+            background: #3a3f4b;
+            border: 1px solid #0d6efd;
+            color: #00d4ff;
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            margin-right: 5px;
+            margin-bottom: 5px;
+        }
+
+        .pingfa-tag .remove {
+            cursor: pointer;
+            margin-left: 5px;
+            color: #ff6b6b;
+        }
+
+        /* 统计卡片 */
+        .stat-card {
+            background: #22252b;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: #8b9bb4;
+        }
+
+        /* 报警横幅 */
+        .alert-banner {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-align: center;
+            z-index: 200;
+            animation: alertPulse 1s ease-in-out infinite;
+        }
+
+        .alert-banner.danger {
+            background: linear-gradient(135deg, #ff1744, #d50000);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(255, 23, 68, 0.5);
+        }
+
+        .alert-banner.success {
+            background: linear-gradient(135deg, #00c853, #00e676);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(0, 200, 83, 0.5);
+        }
+
+        @keyframes alertPulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.85;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container-fluid px-4 py-4">
+        <!-- 面包屑导航 -->
+        <nav class="mb-3">
+            <a href="portal.html" class="text-decoration-none text-secondary"><i class="fas fa-home"></i> 首页</a>
+            <span class="text-secondary mx-2">/</span>
+            <span class="text-white">柱截面验收</span>
+        </nav>
+
+        <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom border-secondary">
+            <div class="d-flex align-items-center gap-4">
+                <div>
+                    <h3 class="text-white fw-bold mb-0"><i class="fas fa-columns"></i> 柱截面合规性检测</h3>
+                    <div class="text-secondary small">Column Section Compliance Detection</div>
+                </div>
+            </div>
+            <div>
+                <a href="portal.html" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-arrow-left"></i>
+                    返回首页</a>
+                <button class="btn btn-outline-primary btn-sm" onclick="location.reload()"><i class="fas fa-sync"></i>
+                    重置</button>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- 左侧参数区 -->
+            <div class="col-lg-3">
+                <!-- 平法数据录入 -->
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-edit"></i> 平法数据录入</div>
+                    <div class="card-body">
+                        <label class="small-label">柱号</label>
+                        <input type="text" class="form-control mb-3" id="columnId" placeholder="如：KZ1" value="KZ1">
+
+                        <label class="small-label">截面尺寸 (mm)</label>
+                        <div class="d-flex gap-2 mb-3">
+                            <input type="number" class="form-control" id="sectionWidth" placeholder="宽" value="650">
+                            <span class="text-secondary align-self-center">×</span>
+                            <input type="number" class="form-control" id="sectionHeight" placeholder="高" value="600">
+                        </div>
+
+                        <label class="small-label">纵筋配置 (平法格式)</label>
+                        <div class="alert alert-dark small p-2 mb-2 text-secondary">
+                            <i class="fas fa-info-circle"></i> 输入格式：<code>4C22</code> 表示 4 根 φ22 钢筋
+                        </div>
+                        <div class="pingfa-input-group">
+                            <input type="text" class="form-control" id="rebarInput" placeholder="如：4C22">
+                            <button class="btn btn-outline-info btn-sm" onclick="addRebar()"><i
+                                    class="fas fa-plus"></i></button>
+                        </div>
+                        <div id="rebarTags" class="mb-3">
+                            <!-- 动态添加的标签 -->
+                        </div>
+
+                        <!-- OCR 识别区域 -->
+                        <div class="ocr-section mb-3">
+                            <label class="small-label">🔍 OCR 自动识别</label>
+                            <div class="alert alert-dark small p-2 mb-2 text-secondary">
+                                <i class="fas fa-magic"></i> 上传平法标注截图，自动识别并填入
+                            </div>
+                            <div class="d-flex gap-2">
+                                <input type="file" id="ocrFileInput" class="form-control form-control-sm"
+                                    accept="image/*" style="display:none;">
+                                <button class="btn btn-outline-warning btn-sm w-100"
+                                    onclick="document.getElementById('ocrFileInput').click()">
+                                    <i class="fas fa-camera"></i> 识别标注
+                                </button>
+                            </div>
+                            <div id="ocrStatus" class="small text-secondary mt-2" style="display:none;"></div>
+                            <div id="ocrPreview" class="mt-2" style="display:none;">
+                                <img id="ocrPreviewImg"
+                                    style="max-width:100%; border-radius:4px; border:1px solid #444;">
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between small text-secondary mb-3">
+                            <span>设计总根数：</span>
+                            <span class="text-info fw-bold" id="designTotal">0</span>
+                        </div>
+
+                        <label class="small-label">箍筋间距 (mm)</label>
+                        <input type="number" class="form-control mb-3" id="hoopSpacing" placeholder="如：100" value="100">
+                    </div>
+                </div>
+
+                <!-- 图片上传与检测 -->
+                <div class="card">
+                    <div class="card-header"><i class="fas fa-camera"></i> 图像检测</div>
+                    <div class="card-body">
+                        <div class="alert alert-dark small p-2 mb-3 text-secondary">
+                            <i class="fas fa-vector-square"></i> <b>操作：</b>上传柱截面图片后，可拖拽画框标定参照物。
+                        </div>
+                        <div class="input-group input-group-sm mb-3">
+                            <span class="input-group-text bg-dark text-secondary">参照物宽</span>
+                            <input type="number" id="refLength" class="form-control text-end text-white" value="85.6">
+                            <span class="input-group-text bg-dark text-secondary">mm</span>
+                        </div>
+
+                        <input type="file" id="fileInput" class="form-control mb-3" accept="image/*">
+                        <button class="btn btn-primary w-100 fw-bold py-2" onclick="startAnalysis()">
+                            <i class="fas fa-bolt"></i> 开始智能识别
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 验收结果 -->
+                <div id="resultBox" class="result-box" style="display:none;">
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="title">验收结果</div>
+                    <div class="detail"></div>
+                </div>
+
+                <!-- 统计信息 -->
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="value" id="detectedCount">-</div>
+                            <div class="label">检测数量</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-card">
+                            <div class="value" id="avgDiameter">-</div>
+                            <div class="label">平均直径</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 导出按钮 -->
+                <div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-success flex-fill" id="exportBtn" onclick="exportToExcel()" disabled>
+                        <i class="fas fa-file-excel"></i> 导出 Excel
+                    </button>
+                    <button class="btn btn-danger flex-fill" id="exportPdfBtn" onclick="exportToPDF()" disabled>
+                        <i class="fas fa-file-pdf"></i> 导出 PDF
+                    </button>
+                </div>
+            </div>
+
+            <!-- 右侧画布区 -->
+            <div class="col-lg-9">
+                <div class="canvas-wrapper">
+                    <!-- 报警横幅 -->
+                    <div id="alertBanner" class="alert-banner" style="display:none;"></div>
+                    <div class="legend-box" id="legendBox">
+                        <div class="legend-item">
+                            <div class="dot" style="background:#00e676;"></div>纵筋检测框
+                        </div>
+                        <div class="legend-item">
+                            <div class="dot" style="background:#ff9800;"></div>参照物
+                        </div>
+                        <div class="legend-item">
+                            <div class="dot" style="background:#2196f3;"></div>外箍筋
+                        </div>
+                        <div class="legend-item">
+                            <div class="dot" style="background:#ffeb3b;"></div>内拉筋
+                        </div>
+                    </div>
+                    <canvas id="mainCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        let imgObj = new Image();
+
+        // --- 全局状态 ---
+        let appState = {
+            predictions: [],
+            rebarConfig: [], // [{count: 4, diameter: 22}, ...]
+
+            // 参照物标定 (拖拽画框)
+            refBox: null,
+            isDrawing: false,
+            startX: 0,
+            startY: 0,
+            pixelPerMm: 0
+        };
+
+        // ============================================
+        // V11.0 核心算法：平法解析器
+        // ============================================
+
+        /**
+         * 解析平法格式字符串
+         * 支持格式：4C25, 8C22, 12C25, 4φ22, 4Φ22
+         * 也支持复合格式："4C25 8C22" 或 "4C25+8C22"
+         * @param {string} str - 平法格式字符串
+         * @returns {Array<{count: number, diameter: number}>} 解析结果
+         */
+        function parsePingfaString(str) {
+            const results = [];
+            // 正则匹配所有 nCd 或 nφd 格式
+            const regex = /(\d+)[CΦφ](\d+)/gi;
+            let match;
+            while ((match = regex.exec(str)) !== null) {
+                results.push({
+                    count: parseInt(match[1]),
+                    diameter: parseInt(match[2])
+                });
+            }
+            return results;
+        }
+
+        /**
+         * 计算平法配置的总根数
+         * @param {Array<{count: number, diameter: number}>} config
+         * @returns {number} 总根数
+         */
+        function getTotalRebarCount(config) {
+            return config.reduce((sum, r) => sum + r.count, 0);
+        }
+
+        // ============================================
+        // V11.0 核心功能：OCR 自动识别
+        // ============================================
+
+        // 监听 OCR 文件上传
+        document.getElementById('ocrFileInput').addEventListener('change', async function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const ocrStatus = document.getElementById('ocrStatus');
+            const ocrPreview = document.getElementById('ocrPreview');
+            const ocrPreviewImg = document.getElementById('ocrPreviewImg');
+
+            // 显示预览
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                ocrPreviewImg.src = event.target.result;
+                ocrPreview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+
+            // 显示状态
+            ocrStatus.style.display = 'block';
+            ocrStatus.innerHTML = '<i class="fas fa-spinner fa-spin text-warning"></i> 正在识别中...';
+
+            try {
+                // 调用 Tesseract.js 进行 OCR 识别
+                const result = await Tesseract.recognize(
+                    file,
+                    'chi_sim+eng', // 中文简体 + 英文
+                    {
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                const progress = Math.round(m.progress * 100);
+                                ocrStatus.innerHTML = `<i class="fas fa-spinner fa-spin text-warning"></i> 识别中... ${progress}%`;
+                            }
+                        }
+                    }
+                );
+
+                const text = result.data.text;
+                console.log('OCR 识别结果:', text);
+
+                // 解析识别到的文字
+                parseOcrResult(text);
+
+                ocrStatus.innerHTML = '<i class="fas fa-check-circle text-success"></i> 识别完成';
+
+            } catch (err) {
+                console.error('OCR 识别失败:', err);
+                ocrStatus.innerHTML = '<i class="fas fa-times-circle text-danger"></i> 识别失败，请重试';
+            }
+        });
+
+        /**
+         * 解析 OCR 识别结果并自动填入
+         * @param {string} text - OCR 识别到的文字
+         */
+        function parseOcrResult(text) {
+            // 提取柱号 (KZ1, KZ2, GZ1 等)
+            const columnMatch = text.match(/[KGZ]+Z?\d+/i);
+            if (columnMatch) {
+                document.getElementById('columnId').value = columnMatch[0].toUpperCase();
+            }
+
+            // 提取截面尺寸 (650x600, 650*600, 650×600 等)
+            const sectionMatch = text.match(/(\d{3,4})\s*[x×\*]\s*(\d{3,4})/i);
+            if (sectionMatch) {
+                document.getElementById('sectionWidth').value = sectionMatch[1];
+                document.getElementById('sectionHeight').value = sectionMatch[2];
+            }
+
+            // 使用平法解析器提取配筋信息
+            const rebarConfigs = parsePingfaString(text);
+
+            if (rebarConfigs.length > 0) {
+                // 清空现有配置，添加识别到的配置
+                appState.rebarConfig = [];
+                appState.rebarConfig.push(...rebarConfigs);
+                renderRebarTags();
+                updateDesignTotal();
+
+                // 显示识别到的配筋信息
+                const configStr = rebarConfigs.map(r => `${r.count}C${r.diameter}`).join(' + ');
+                showAlertBanner('success', `📷 OCR 识别成功！配筋：${configStr}，共 ${getTotalRebarCount(rebarConfigs)} 根`);
+            } else {
+                // 尝试提取纯数字格式 (如 "4 22 8 20")
+                const numbers = text.match(/\d+/g);
+                if (numbers && numbers.length >= 2) {
+                    // 尝试配对解析
+                    for (let i = 0; i < numbers.length - 1; i += 2) {
+                        const count = parseInt(numbers[i]);
+                        const diameter = parseInt(numbers[i + 1]);
+                        if (count > 0 && count <= 20 && diameter >= 10 && diameter <= 40) {
+                            appState.rebarConfig.push({ count, diameter });
+                        }
+                    }
+                    if (appState.rebarConfig.length > 0) {
+                        renderRebarTags();
+                        updateDesignTotal();
+                        showAlertBanner('success', `📷 OCR 识别成功！`);
+                    }
+                }
+            }
+
+            // 将原始识别文本填入输入框供用户确认
+            if (rebarConfigs.length === 0) {
+                document.getElementById('rebarInput').value = text.replace(/\n/g, ' ').trim();
+            }
+        }
+
+        // --- 平法数据录入 ---
+        function addRebar() {
+            const input = document.getElementById('rebarInput');
+            const value = input.value.trim().toUpperCase();
+
+            // 使用平法解析器解析输入
+            const parsed = parsePingfaString(value);
+
+            if (parsed.length === 0) {
+                alert('格式错误！请输入如 4C22 或 8C20，也可输入 "4C25 8C22" 一次添加多组');
+                return;
+            }
+
+            // 添加所有解析出的配置
+            appState.rebarConfig.push(...parsed);
+            input.value = '';
+            renderRebarTags();
+            updateDesignTotal();
+        }
+
+        function removeRebar(index) {
+            appState.rebarConfig.splice(index, 1);
+            renderRebarTags();
+            updateDesignTotal();
+        }
+
+        function renderRebarTags() {
+            const container = document.getElementById('rebarTags');
+            container.innerHTML = appState.rebarConfig.map((r, i) =>
+                `<span class="pingfa-tag">${r.count}C${r.diameter} <span class="remove" onclick="removeRebar(${i})">×</span></span>`
+            ).join('');
+        }
+
+        function updateDesignTotal() {
+            const total = getTotalRebarCount(appState.rebarConfig);
+            document.getElementById('designTotal').innerText = total;
+        }
+
+        // --- 图片加载 ---
+        document.getElementById('fileInput').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                imgObj.onload = function () {
+                    appState.predictions = [];
+                    appState.refBox = null;
+                    appState.pixelPerMm = 0;
+
+                    canvas.width = imgObj.width;
+                    canvas.height = imgObj.height;
+                    redrawCanvas();
+                }
+                imgObj.src = event.target.result;
+            }
+            reader.readAsDataURL(file);
+        });
+
+        // --- 鼠标交互：拖拽画参照物框 ---
+        canvas.addEventListener('mousedown', e => {
+            if (!imgObj.src) return;
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            const mx = (e.clientX - rect.left) * scaleX;
+            const my = (e.clientY - rect.top) * scaleY;
+
+            appState.isDrawing = true;
+            appState.startX = mx;
+            appState.startY = my;
+            appState.refBox = { x: mx, y: my, w: 0, h: 0 };
+        });
+
+        canvas.addEventListener('mousemove', e => {
+            if (appState.isDrawing) {
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const mx = (e.clientX - rect.left) * scaleX;
+                const my = (e.clientY - rect.top) * scaleY;
+                appState.refBox.w = mx - appState.startX;
+                appState.refBox.h = my - appState.startY;
+                redrawCanvas();
+            }
+        });
+
+        canvas.addEventListener('mouseup', e => {
+            if (appState.isDrawing) {
+                appState.isDrawing = false;
+                if (Math.abs(appState.refBox.w) > 5) {
+                    const pxW = Math.abs(appState.refBox.w);
+                    const realW = parseFloat(document.getElementById('refLength').value);
+                    appState.pixelPerMm = pxW / realW;
+                    if (appState.predictions.length > 0) {
+                        updateStats();
+                        checkCompliance();
+                    }
+                }
+                redrawCanvas();
+            }
+        });
+
+        // --- 调用后端 AI 识别 ---
+        async function startAnalysis() {
+            if (!imgObj.src) return alert("请上传图片");
+            const btn = document.querySelector('button[onclick="startAnalysis()"]');
+            const oldHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在调用 AI...';
+            btn.disabled = true;
+
+            try {
+                const maxSide = 1280;
+                let w = imgObj.width, h = imgObj.height;
+                if (w > maxSide || h > maxSide) {
+                    const r = Math.min(maxSide / w, maxSide / h);
+                    w *= r;
+                    h *= r;
+                }
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = w;
+                tempCanvas.height = h;
+                tempCanvas.getContext('2d').drawImage(imgObj, 0, 0, w, h);
+
+                tempCanvas.toBlob(async function (blob) {
+                    const formData = new FormData();
+                    formData.append('image', blob);
+
+                    // 复用现有 counting 模型
+                    const url = `/analyze?mode=counting&conf=40&overlap=40`;
+                    const res = await fetch(url, { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    if (data.predictions) {
+                        appState.predictions = data.predictions;
+                        redrawCanvas();
+                        updateStats();
+                        checkCompliance();
+                    }
+                    btn.innerHTML = oldHtml;
+                    btn.disabled = false;
+                }, 'image/jpeg', 0.85);
+            } catch (err) {
+                console.error(err);
+                btn.innerHTML = oldHtml;
+                btn.disabled = false;
+            }
+        }
+
+        // --- 绘图逻辑 ---
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(imgObj, 0, 0);
+
+            // 绘制参照物框
+            if (appState.refBox && appState.refBox.w !== 0) {
+                ctx.strokeStyle = "#ff9800";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([5, 5]);
+                ctx.strokeRect(appState.refBox.x, appState.refBox.y, appState.refBox.w, appState.refBox.h);
+                ctx.setLineDash([]);
+                ctx.fillStyle = "#ff9800";
+                ctx.font = "14px Arial";
+                ctx.fillText("参照物", appState.refBox.x, appState.refBox.y - 5);
+            }
+
+            // 绘制检测到的钢筋
+            if (appState.predictions.length > 0) {
+                appState.predictions.forEach((p, i) => {
+                    const x = p.x - p.width / 2;
+                    const y = p.y - p.height / 2;
+
+                    // 绘制检测框
+                    ctx.strokeStyle = "#00e676";
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(x, y, p.width, p.height);
+
+                    // 绘制编号
+                    ctx.fillStyle = "#00e676";
+                    ctx.font = "bold 12px Arial";
+                    ctx.fillText((i + 1).toString(), p.x - 4, p.y + 4);
+
+                    // 如果已标定，显示直径
+                    if (appState.pixelPerMm > 0) {
+                        const dia = (Math.min(p.width, p.height) / appState.pixelPerMm).toFixed(1);
+                        ctx.fillStyle = "#fff";
+                        ctx.font = "10px Arial";
+                        ctx.fillText(`φ${dia}`, x, y - 3);
+                    }
+                });
+
+                // 绘制箍筋轮廓 (凸包)
+                drawHoopOutline();
+            }
+        }
+
+        // ============================================
+        // V11.0 核心算法：箍筋自动生成
+        // ============================================
+
+        function drawHoopOutline() {
+            if (appState.predictions.length < 3) return;
+
+            // 获取所有钢筋中心点
+            const points = appState.predictions.map(p => ({ x: p.x, y: p.y }));
+
+            // 1. 计算凸包（最外圈点）作为外箍筋
+            const hull = convexHull(points);
+            const hullSet = new Set(hull.map(p => `${p.x},${p.y}`));
+
+            // 2. 找出内部点（不在凸包上的点）
+            const innerPoints = points.filter(p => !hullSet.has(`${p.x},${p.y}`));
+
+            if (hull.length < 3) return;
+
+            // === 绘制外箍筋（蓝色实线）===
+            ctx.strokeStyle = "#2196f3";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(hull[0].x, hull[0].y);
+            for (let i = 1; i < hull.length; i++) {
+                ctx.lineTo(hull[i].x, hull[i].y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // 在凸包角点绘制标记
+            hull.forEach(p => {
+                ctx.fillStyle = "#2196f3";
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // === 绘制内拉筋（黄色虚线）===
+            if (innerPoints.length > 0) {
+                drawInnerTies(hull, innerPoints);
+            }
+        }
+
+        /**
+         * 绘制内拉筋：连接内部点与外框
+         * 模拟井字形/菱形箍筋的拉筋
+         */
+        function drawInnerTies(hull, innerPoints) {
+            ctx.strokeStyle = "#ffeb3b";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([8, 4]);
+
+            // 计算外框的边界 (最小外接矩形)
+            const minX = Math.min(...hull.map(p => p.x));
+            const maxX = Math.max(...hull.map(p => p.x));
+            const minY = Math.min(...hull.map(p => p.y));
+            const maxY = Math.max(...hull.map(p => p.y));
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+
+            // 将内部点按行列分组（用于判断连接方向）
+            const sortedByX = innerPoints.slice().sort((a, b) => a.x - b.x);
+            const sortedByY = innerPoints.slice().sort((a, b) => a.y - b.y);
+
+            // 绘制横向拉筋
+            const rows = groupByAxis(innerPoints, 'y', 30);
+            rows.forEach(row => {
+                if (row.length >= 1) {
+                    const sortedRow = row.sort((a, b) => a.x - b.x);
+                    // 从左边框到第一个内部点
+                    ctx.beginPath();
+                    ctx.moveTo(minX, sortedRow[0].y);
+                    ctx.lineTo(sortedRow[0].x, sortedRow[0].y);
+                    ctx.stroke();
+                    // 从最后一个内部点到右边框
+                    ctx.beginPath();
+                    ctx.moveTo(sortedRow[sortedRow.length - 1].x, sortedRow[sortedRow.length - 1].y);
+                    ctx.lineTo(maxX, sortedRow[sortedRow.length - 1].y);
+                    ctx.stroke();
+                    // 连接同一行的相邻内部点
+                    for (let i = 0; i < sortedRow.length - 1; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(sortedRow[i].x, sortedRow[i].y);
+                        ctx.lineTo(sortedRow[i + 1].x, sortedRow[i + 1].y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            // 绘制纵向拉筋
+            const cols = groupByAxis(innerPoints, 'x', 30);
+            cols.forEach(col => {
+                if (col.length >= 1) {
+                    const sortedCol = col.sort((a, b) => a.y - b.y);
+                    // 从上边框到第一个内部点
+                    ctx.beginPath();
+                    ctx.moveTo(sortedCol[0].x, minY);
+                    ctx.lineTo(sortedCol[0].x, sortedCol[0].y);
+                    ctx.stroke();
+                    // 从最后一个内部点到下边框
+                    ctx.beginPath();
+                    ctx.moveTo(sortedCol[sortedCol.length - 1].x, sortedCol[sortedCol.length - 1].y);
+                    ctx.lineTo(sortedCol[sortedCol.length - 1].x, maxY);
+                    ctx.stroke();
+                    // 连接同一列的相邻内部点
+                    for (let i = 0; i < sortedCol.length - 1; i++) {
+                        ctx.beginPath();
+                        ctx.moveTo(sortedCol[i].x, sortedCol[i].y);
+                        ctx.lineTo(sortedCol[i + 1].x, sortedCol[i + 1].y);
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            ctx.setLineDash([]);
+
+            // 标记内部点
+            innerPoints.forEach(p => {
+                ctx.fillStyle = "#ffeb3b";
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        /**
+         * 按坐标轴分组（将接近的点归为同一行/列）
+         */
+        function groupByAxis(points, axis, threshold) {
+            const groups = [];
+            const sorted = points.slice().sort((a, b) => a[axis] - b[axis]);
+
+            sorted.forEach(p => {
+                // 尝试找到可以加入的现有组
+                let addedToGroup = false;
+                for (const group of groups) {
+                    const avgAxisVal = group.reduce((sum, gp) => sum + gp[axis], 0) / group.length;
+                    if (Math.abs(p[axis] - avgAxisVal) < threshold) {
+                        group.push(p);
+                        addedToGroup = true;
+                        break;
+                    }
+                }
+                if (!addedToGroup) {
+                    groups.push([p]);
+                }
+            });
+
+            return groups;
+        }
+
+        // Graham Scan 凸包算法
+        function convexHull(points) {
+            if (points.length < 3) return points;
+
+            // 找到最下方的点（y最大，若相同取x最小）
+            let start = points.reduce((min, p) =>
+                (p.y > min.y || (p.y === min.y && p.x < min.x)) ? p : min
+            );
+
+            // 按极角排序
+            const sorted = points.slice().sort((a, b) => {
+                const angleA = Math.atan2(a.y - start.y, a.x - start.x);
+                const angleB = Math.atan2(b.y - start.y, b.x - start.x);
+                return angleA - angleB;
+            });
+
+            // 构建凸包
+            const stack = [];
+            for (const p of sorted) {
+                while (stack.length >= 2 && cross(stack[stack.length - 2], stack[stack.length - 1], p) <= 0) {
+                    stack.pop();
+                }
+                stack.push(p);
+            }
+            return stack;
+        }
+
+        function cross(o, a, b) {
+            return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+        }
+
+        // --- 统计更新 ---
+        function updateStats() {
+            document.getElementById('detectedCount').innerText = appState.predictions.length;
+
+            if (appState.pixelPerMm > 0 && appState.predictions.length > 0) {
+                const dias = appState.predictions.map(p =>
+                    Math.min(p.width, p.height) / appState.pixelPerMm
+                );
+                const avg = dias.reduce((a, b) => a + b, 0) / dias.length;
+                document.getElementById('avgDiameter').innerText = `φ${avg.toFixed(1)}`;
+            } else {
+                document.getElementById('avgDiameter').innerText = '-';
+            }
+        }
+
+        // ============================================
+        // V11.0 核心算法：智能报警
+        // ============================================
+
+        function checkCompliance() {
+            const designTotal = getTotalRebarCount(appState.rebarConfig);
+            const detectedCount = appState.predictions.length;
+            const columnId = document.getElementById('columnId').value || 'KZ?';
+
+            const resultBox = document.getElementById('resultBox');
+            const alertBanner = document.getElementById('alertBanner');
+            resultBox.style.display = 'block';
+
+            // 隐藏报警横幅
+            alertBanner.style.display = 'none';
+
+            if (designTotal === 0) {
+                resultBox.className = 'result-box';
+                resultBox.innerHTML = `
+                    <div class="icon text-secondary"><i class="fas fa-question-circle"></i></div>
+                    <div class="title text-secondary">请录入设计参数</div>
+                    <div class="detail">检测到 ${detectedCount} 根钢筋</div>
+                `;
+                return;
+            }
+
+            // 计算差异
+            const diff = detectedCount - designTotal;
+
+            if (diff === 0) {
+                // ✅ 合格
+                resultBox.className = 'result-box result-pass';
+                resultBox.innerHTML = `
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="title">✅ 验收合格</div>
+                    <div class="detail">设计 ${designTotal} 根 | 检测 ${detectedCount} 根</div>
+                `;
+                // 显示成功横幅
+                showAlertBanner('success', `✅ ${columnId} 柱验收合格！设计 ${designTotal} 根 = 检测 ${detectedCount} 根`);
+            } else if (diff < 0) {
+                // ❌ 少筋 - 严重警告
+                resultBox.className = 'result-box result-fail';
+                resultBox.innerHTML = `
+                    <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="title">❌ 少筋警告</div>
+                    <div class="detail">设计 ${designTotal} 根 | 检测 ${detectedCount} 根 | 缺少 ${Math.abs(diff)} 根</div>
+                `;
+                // 显示危险横幅
+                showAlertBanner('danger', `⚠️ 警告：${columnId} 柱少筋！设计要求 ${designTotal} 根，实际检测 ${detectedCount} 根，缺少 ${Math.abs(diff)} 根！`);
+            } else {
+                // ⚠️ 多筋 - 提示
+                resultBox.className = 'result-box result-pass';
+                resultBox.innerHTML = `
+                    <div class="icon"><i class="fas fa-info-circle"></i></div>
+                    <div class="title">⚠️ 多筋提示</div>
+                    <div class="detail">设计 ${designTotal} 根 | 检测 ${detectedCount} 根 | 多 ${diff} 根</div>
+                `;
+                showAlertBanner('success', `📌 ${columnId} 柱检测到 ${detectedCount} 根，比设计多 ${diff} 根`);
+            }
+        }
+
+        /**
+         * 显示报警横幅
+         * @param {string} type - 'danger' 或 'success'
+         * @param {string} message - 显示的消息
+         */
+        function showAlertBanner(type, message) {
+            const banner = document.getElementById('alertBanner');
+            banner.className = `alert-banner ${type}`;
+            banner.innerHTML = `<i class="fas fa-${type === 'danger' ? 'exclamation-circle' : 'check-circle'}"></i> ${message}`;
+            banner.style.display = 'block';
+
+            // 启用导出按钮（有检测结果时）
+            if (appState.predictions.length > 0) {
+                document.getElementById('exportBtn').disabled = false;
+                document.getElementById('exportPdfBtn').disabled = false;
+            }
+        }
+
+        // ============================================
+        // V11.0 数据交付：Excel 导出
+        // ============================================
+
+        /**
+         * 导出算量表到 Excel
+         */
+        function exportToExcel() {
+            const columnId = document.getElementById('columnId').value || 'KZ?';
+            const sectionW = document.getElementById('sectionWidth').value || '-';
+            const sectionH = document.getElementById('sectionHeight').value || '-';
+            const hoopSpacing = document.getElementById('hoopSpacing').value || '-';
+
+            const designTotal = getTotalRebarCount(appState.rebarConfig);
+            const detectedCount = appState.predictions.length;
+
+            // 生成配筋描述字符串
+            const configStr = appState.rebarConfig.map(r => `${r.count}C${r.diameter}`).join(' ');
+
+            // 判断合规性结论
+            let conclusion = '';
+            const diff = detectedCount - designTotal;
+            if (designTotal === 0) {
+                conclusion = '未录入设计参数';
+            } else if (diff === 0) {
+                conclusion = '✅ 合格';
+            } else if (diff < 0) {
+                conclusion = `❌ 少筋 (缺${Math.abs(diff)}根)`;
+            } else {
+                conclusion = `⚠️ 多筋 (多${diff}根)`;
+            }
+
+            // 获取当前时间
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+
+            // 计算平均直径
+            let avgDia = '-';
+            if (appState.pixelPerMm > 0 && appState.predictions.length > 0) {
+                const dias = appState.predictions.map(p =>
+                    Math.min(p.width, p.height) / appState.pixelPerMm
+                );
+                avgDia = 'φ' + (dias.reduce((a, b) => a + b, 0) / dias.length).toFixed(1);
+            }
+
+            // 构建表格数据
+            const data = [
+                ['柱截面合规性检测报告'],
+                [''],
+                ['检测时间', timeStr],
+                [''],
+                ['构件编号', '截面尺寸', '设计配筋', '设计总数', '实测总数', '平均直径', '箍筋间距', '合规性结论'],
+                [columnId, `${sectionW}×${sectionH}`, configStr, designTotal, detectedCount, avgDia, `@${hoopSpacing}`, conclusion],
+                [''],
+                ['详细配筋信息'],
+                ['规格', '数量']
+            ];
+
+            // 添加每种规格的详细信息
+            appState.rebarConfig.forEach(r => {
+                data.push([`φ${r.diameter}`, r.count]);
+            });
+
+            // 添加备注
+            data.push(['']);
+            data.push(['备注：本报告由钢筋工程智能管控平台 V11.0 自动生成']);
+
+            // 使用 SheetJS 创建工作簿
+            const ws = XLSX.utils.aoa_to_sheet(data);
+
+            // 设置列宽
+            ws['!cols'] = [
+                { wch: 12 }, // 构件编号
+                { wch: 12 }, // 截面尺寸
+                { wch: 15 }, // 设计配筋
+                { wch: 10 }, // 设计总数
+                { wch: 10 }, // 实测总数
+                { wch: 10 }, // 平均直径
+                { wch: 10 }, // 箍筋间距
+                { wch: 18 }  // 合规性结论
+            ];
+
+            // 合并标题单元格
+            ws['!merges'] = [
+                { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } } // 合并第一行标题
+            ];
+
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, '验收报告');
+
+            // 生成文件名
+            const fileName = `${columnId}_验收报告_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.xlsx`;
+
+            // 下载文件
+            XLSX.writeFile(wb, fileName);
+
+            // 显示成功提示
+            showAlertBanner('success', `📥 算量表已导出：${fileName}`);
+        }
+
+        // ============================================
+        // V11.0 数据交付：PDF 报告导出
+        // ============================================
+
+        /**
+         * 导出检测报告到 PDF
+         */
+        async function exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const columnId = document.getElementById('columnId').value || 'KZ?';
+            const sectionW = document.getElementById('sectionWidth').value || '-';
+            const sectionH = document.getElementById('sectionHeight').value || '-';
+            const hoopSpacing = document.getElementById('hoopSpacing').value || '-';
+
+            const designTotal = getTotalRebarCount(appState.rebarConfig);
+            const detectedCount = appState.predictions.length;
+            const configStr = appState.rebarConfig.map(r => `${r.count}C${r.diameter}`).join(' ');
+
+            // 判断合规性结论
+            let conclusion = '';
+            const diff = detectedCount - designTotal;
+            if (designTotal === 0) {
+                conclusion = '未录入设计参数';
+            } else if (diff === 0) {
+                conclusion = '合格';
+            } else if (diff < 0) {
+                conclusion = `少筋 (缺${Math.abs(diff)}根)`;
+            } else {
+                conclusion = `多筋 (多${diff}根)`;
+            }
+
+            // 获取当前时间
+            const now = new Date();
+            const timeStr = now.toLocaleString('zh-CN');
+
+            // 显示加载状态
+            showAlertBanner('success', '📄 正在生成 PDF...');
+
+            try {
+                // 创建 PDF 文档 (A4 尺寸)
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = pdf.internal.pageSize.getWidth();
+                const pageHeight = pdf.internal.pageSize.getHeight();
+                const margin = 15;
+                let y = margin;
+
+                // 标题
+                pdf.setFontSize(18);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('柱截面合规性检测报告', pageWidth / 2, y, { align: 'center' });
+                y += 10;
+
+                // 副标题
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('Column Section Compliance Detection Report', pageWidth / 2, y, { align: 'center' });
+                y += 15;
+
+                // 基本信息表格
+                pdf.setFontSize(11);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('基本信息', margin, y);
+                y += 6;
+
+                pdf.setFont('helvetica', 'normal');
+                const info = [
+                    ['构件编号', columnId],
+                    ['截面尺寸', `${sectionW} × ${sectionH} mm`],
+                    ['设计配筋', configStr],
+                    ['箍筋间距', `@${hoopSpacing} mm`],
+                    ['检测时间', timeStr]
+                ];
+
+                info.forEach(([label, value]) => {
+                    pdf.text(`${label}：${value}`, margin, y);
+                    y += 6;
+                });
+                y += 5;
+
+                // 检测结果
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('检测结果', margin, y);
+                y += 6;
+
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`设计总根数：${designTotal}`, margin, y);
+                y += 6;
+                pdf.text(`实测总根数：${detectedCount}`, margin, y);
+                y += 6;
+
+                // 合规性结论带颜色
+                pdf.setFont('helvetica', 'bold');
+                if (diff === 0) {
+                    pdf.setTextColor(0, 150, 0);
+                    pdf.text(`合规性结论：✓ ${conclusion}`, margin, y);
+                } else if (diff < 0) {
+                    pdf.setTextColor(200, 0, 0);
+                    pdf.text(`合规性结论：✗ ${conclusion}`, margin, y);
+                } else {
+                    pdf.setTextColor(200, 150, 0);
+                    pdf.text(`合规性结论：⚠ ${conclusion}`, margin, y);
+                }
+                pdf.setTextColor(0, 0, 0);
+                y += 15;
+
+                // 添加检测图像
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('检测图像', margin, y);
+                y += 6;
+
+                // 将 Canvas 转为图片
+                const canvas = document.getElementById('mainCanvas');
+                const imgData = canvas.toDataURL('image/jpeg', 0.8);
+
+                // 计算图片尺寸 (保持比例, 最大宽度 180mm)
+                const maxImgWidth = pageWidth - 2 * margin;
+                const imgRatio = canvas.height / canvas.width;
+                let imgWidth = maxImgWidth;
+                let imgHeight = imgWidth * imgRatio;
+
+                // 如果图片太高，换页或缩小
+                if (y + imgHeight > pageHeight - margin) {
+                    imgHeight = pageHeight - margin - y;
+                    imgWidth = imgHeight / imgRatio;
+                }
+
+                pdf.addImage(imgData, 'JPEG', margin, y, imgWidth, imgHeight);
+                y += imgHeight + 10;
+
+                // 如果需要，添加新页面
+                if (y > pageHeight - 30) {
+                    pdf.addPage();
+                    y = margin;
+                }
+
+                // 页脚
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'normal');
+                pdf.setTextColor(128, 128, 128);
+                pdf.text('本报告由钢筋工程智能管控平台 V11.0 自动生成', pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+                // 生成文件名并下载
+                const fileName = `${columnId}_验收报告_${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}.pdf`;
+                pdf.save(fileName);
+
+                showAlertBanner('success', `📄 PDF 报告已导出：${fileName}`);
+
+            } catch (err) {
+                console.error('PDF 导出失败:', err);
+                showAlertBanner('danger', '❌ PDF 导出失败，请重试');
+            }
+        }
+
+        // 页面加载时，添加默认配置示例
+        (function init() {
+            // 添加示例配置：4C22 + 8C20
+            appState.rebarConfig = [
+                { count: 4, diameter: 22 },
+                { count: 8, diameter: 20 }
+            ];
+            renderRebarTags();
+            updateDesignTotal();
+        })();
+    </script>
+</body>
+
+</html>

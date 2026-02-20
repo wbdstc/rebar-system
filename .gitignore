@@ -1,22 +1,3 @@
-# Node.js 依赖 (绝对不能上传)
-node_modules/
-npm-debug.log
-
-# Python/Anaconda 缓存和环境 (绝对不能上传)
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
-env/
-.env
-.venv/
-
-# PyCharm 配置
-.idea/
-
-# VS Code 配置 (个人配置通常不传)
-.vscode/
-
-# 系统文件
-.DS_Store
-Thumbs.db
+minio_data/
+bin/
+data/
