@@ -2,6 +2,7 @@
 import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { marked } from 'marked'
 import api from '../api'
 
 const route = useRoute()
@@ -20,6 +21,14 @@ const inspectionModes = [
     desc: '检测柱纵向钢筋数量，比对角筋+中部筋设计值'
   },
   {
+    value: 'column_stirrup',
+    label: '柱 - 箍筋检测 (KZ)',
+    icon: 'Grid',
+    color: '#409EFF',
+    backendMode: 'spacing',
+    desc: '检测柱箍筋间距，区分加密区与非加密区'
+  },
+  {
     value: 'beam_longitudinal',
     label: '梁 - 主筋检测 (KL)',
     icon: 'Aim',
@@ -28,20 +37,28 @@ const inspectionModes = [
     desc: '检测梁上下部纵筋数量，比对设计值'
   },
   {
-    value: 'stirrup',
-    label: '柱/梁 - 箍筋检测 (KZ/KL)',
+    value: 'beam_stirrup',
+    label: '梁 - 箍筋检测 (KL)',
     icon: 'Grid',
-    color: '#409EFF',
+    color: '#2196F3',
     backendMode: 'spacing',
-    desc: '检测箍筋间距，区分加密区与非加密区'
+    desc: '检测梁箍筋间距，区分加密区与非加密区'
   },
   {
-    value: 'slab_wall',
-    label: '板/墙 - 钢筋检测 (B/Q)',
+    value: 'slab_mesh',
+    label: '板 - 钢筋检测 (B)',
     icon: 'Grid',
     color: '#E6A23C',
     backendMode: 'spacing',
-    desc: '检测板/墙分布钢筋间距，比对设计间距'
+    desc: '检测楼板分布钢筋间距，比对设计间距'
+  },
+  {
+    value: 'wall_mesh',
+    label: '墙 - 钢筋检测 (Q)',
+    icon: 'Grid',
+    color: '#FF7043',
+    backendMode: 'spacing',
+    desc: '检测剪力墙分布筋间距，比对设计间距'
   },
   {
     value: 'material',
@@ -64,7 +81,7 @@ const inspectionModes = [
 // =============================================
 // 状态定义
 // =============================================
-const currentMode = ref('stirrup')
+const currentMode = ref('column_longitudinal')
 const isLoading = ref(false)
 const imageFile = ref(null)
 const imagePreview = ref(null)
@@ -76,7 +93,8 @@ const pingfaParams = reactive({
   column: { corner: 4, middle: 0 },
   beam: { top: 0, bottom: 0, waist: 0 },
   stirrup: { dense: 100, normal: 200 },
-  slab: { spacingX: 150, spacingY: 150 }
+  slab: { bottomSpacing: 150, topSpacing: 150 },
+  wall: { horizontalSpacing: 200, verticalSpacing: 200 }
 })
 
 // 进场原材参数
@@ -135,6 +153,7 @@ const cadFile = ref(null)
 const cadPreview = ref(null)
 const cadParsing = ref(false)
 const cadParseHint = ref('')
+const aiReport = ref('')  // AI 审图分析报告（Markdown 原文）
 const cadParseResult = reactive({
   success: false,
   component_type: '',
@@ -150,6 +169,12 @@ const cadParseResult = reactive({
   stirrup_legs: 0,
   // 板/墙
   design_spacing: 0
+})
+
+// AI 报告 HTML（由 marked 渲染）
+const aiReportHtml = computed(() => {
+  if (!aiReport.value) return ''
+  return marked(aiReport.value)
 })
 
 // =============================================
@@ -171,7 +196,7 @@ const designTotal = computed(() => {
 })
 
 const needsCalibration = computed(() =>
-  ['stirrup', 'slab_wall', 'material'].includes(currentMode.value)
+  ['column_stirrup', 'beam_stirrup', 'slab_mesh', 'wall_mesh', 'material'].includes(currentMode.value)
 )
 
 const avgDiameter = computed(() => {
@@ -226,6 +251,7 @@ const resetAll = () => {
   cadPreview.value = null
   cadParsing.value = false
   cadParseHint.value = ''
+  aiReport.value = ''
   cadParseResult.success = false
   cadParseResult.component_type = ''
   cadParseResult.corner_bars = 0
@@ -285,12 +311,22 @@ const handleCadFileChange = (file) => {
   reader.readAsDataURL(rawFile)
 }
 
-// 将当前模式映射为后端 component_type
-const componentTypeMap = {
-  column_longitudinal: 'column',
-  beam_longitudinal: 'beam',
-  stirrup: 'beam',
-  slab_wall: 'slab'
+// 将当前模式映射为 VLM 后端 component_type（精准中文语义）
+const vlmComponentLabel = () => {
+  if (currentMode.value.startsWith('column')) return '柱'
+  if (currentMode.value.startsWith('beam')) return '梁'
+  if (currentMode.value === 'slab_mesh') return '楼板'
+  if (currentMode.value === 'wall_mesh') return '剪力墙'
+  return '柱'
+}
+
+// 后端 VLM 接口的 component_type 参数
+const vlmComponentType = () => {
+  if (currentMode.value.startsWith('column')) return 'column'
+  if (currentMode.value.startsWith('beam')) return 'beam'
+  if (currentMode.value === 'slab_mesh') return 'slab'
+  if (currentMode.value === 'wall_mesh') return 'wall'
+  return 'column'
 }
 
 const parseCadImage = async () => {
@@ -301,8 +337,9 @@ const parseCadImage = async () => {
 
   cadParsing.value = true
   cadParseHint.value = ''
+  aiReport.value = ''
 
-  const compType = componentTypeMap[currentMode.value] || 'column'
+  const compType = vlmComponentType()
 
   try {
     const formData = new FormData()
@@ -315,32 +352,55 @@ const parseCadImage = async () => {
       cadParseResult.success = true
       cadParseResult.component_type = compType
 
-      // 按构件类型动态回填
+      // 存储 AI 审图报告（Markdown）
+      aiReport.value = data.report || ''
+
+      // 从 extracted_data 或顶层字段提取数据（兼容新旧格式）
+      const ed = data.extracted_data || data
+
+      // 按构件类型动态回填（值为0表示图纸未标注，保留默认值）
+      const v = (val) => val || 0  // 安全取值
+      const label = (val) => val ? val : '图纸未标注'
+
       if (compType === 'column') {
-        cadParseResult.corner_bars = data.corner_bars || 0
-        cadParseResult.middle_bars = data.middle_bars || 0
-        cadParseResult.total_bars = data.total_bars || 0
-        cadParseResult.stirrup_dense = data.stirrup_dense || 0
-        cadParseResult.stirrup_normal = data.stirrup_normal || 0
-        pingfaParams.column.corner = data.corner_bars || 4
-        pingfaParams.column.middle = data.middle_bars || 0
-        cadParseHint.value = `✅ 角筋 ${data.corner_bars}，中部筋 ${data.middle_bars}，总 ${data.total_bars}，箍筋 ${data.stirrup_dense}/${data.stirrup_normal}`
+        cadParseResult.corner_bars = v(ed.corner_bars)
+        cadParseResult.middle_bars = v(ed.middle_bars)
+        cadParseResult.total_bars = v(ed.total_bars)
+        cadParseResult.stirrup_dense = v(ed.stirrup_dense)
+        cadParseResult.stirrup_normal = v(ed.stirrup_normal)
+        // 仅当 AI 返回非0时覆盖默认值
+        if (ed.corner_bars) pingfaParams.column.corner = ed.corner_bars
+        if (ed.middle_bars) pingfaParams.column.middle = ed.middle_bars
+        if (ed.stirrup_dense) pingfaParams.stirrup.dense = ed.stirrup_dense
+        if (ed.stirrup_normal) pingfaParams.stirrup.normal = ed.stirrup_normal
+        cadParseHint.value = `✅ 角筋 ${label(ed.corner_bars)}，中部筋 ${label(ed.middle_bars)}，总 ${label(ed.total_bars)}，箍筋 ${label(ed.stirrup_dense)}/${label(ed.stirrup_normal)}`
       } else if (compType === 'beam') {
-        cadParseResult.top_bars_total = data.top_bars_total || 0
-        cadParseResult.bottom_bars_total = data.bottom_bars_total || 0
-        cadParseResult.stirrup_dense = data.stirrup_dense || 0
-        cadParseResult.stirrup_normal = data.stirrup_normal || 0
-        cadParseResult.stirrup_legs = data.stirrup_legs || 0
-        pingfaParams.beam.top = data.top_bars_total || 0
-        pingfaParams.beam.bottom = data.bottom_bars_total || 0
-        pingfaParams.stirrup.dense = data.stirrup_dense || 100
-        pingfaParams.stirrup.normal = data.stirrup_normal || 200
-        cadParseHint.value = `✅ 上部筋 ${data.top_bars_total}，下部筋 ${data.bottom_bars_total}，箍筋 ${data.stirrup_dense}/${data.stirrup_normal}`
+        cadParseResult.top_bars_total = v(ed.top_bars_total)
+        cadParseResult.bottom_bars_total = v(ed.bottom_bars_total)
+        cadParseResult.stirrup_dense = v(ed.stirrup_dense)
+        cadParseResult.stirrup_normal = v(ed.stirrup_normal)
+        cadParseResult.stirrup_legs = v(ed.stirrup_legs)
+        if (ed.top_bars_total) pingfaParams.beam.top = ed.top_bars_total
+        if (ed.bottom_bars_total) pingfaParams.beam.bottom = ed.bottom_bars_total
+        if (ed.waist_bars) pingfaParams.beam.waist = ed.waist_bars
+        if (ed.stirrup_dense) pingfaParams.stirrup.dense = ed.stirrup_dense
+        if (ed.stirrup_normal) pingfaParams.stirrup.normal = ed.stirrup_normal
+        cadParseHint.value = `✅ 上部筋 ${label(ed.top_bars_total)}，下部筋 ${label(ed.bottom_bars_total)}，箍筋 ${label(ed.stirrup_dense)}/${label(ed.stirrup_normal)}`
+      } else if (compType === 'slab') {
+        cadParseResult.design_spacing = v(ed.design_spacing)
+        if (ed.design_spacing) {
+          pingfaParams.slab.bottomSpacing = ed.design_spacing
+          pingfaParams.slab.topSpacing = ed.design_spacing
+        }
+        cadParseHint.value = `✅ 楼板设计间距 ${label(ed.design_spacing)}`
       } else {
-        cadParseResult.design_spacing = data.design_spacing || 0
-        pingfaParams.slab.spacingX = data.design_spacing || 150
-        pingfaParams.slab.spacingY = data.design_spacing || 150
-        cadParseHint.value = `✅ 设计间距 ${data.design_spacing}mm`
+        // wall
+        cadParseResult.design_spacing = v(ed.design_spacing)
+        if (ed.design_spacing) {
+          pingfaParams.wall.horizontalSpacing = ed.design_spacing
+          pingfaParams.wall.verticalSpacing = ed.design_spacing
+        }
+        cadParseHint.value = `✅ 剪力墙设计间距 ${label(ed.design_spacing)}`
       }
       ElMessage.success('CAD 图纸解析成功，参数已自动填充')
     } else {
@@ -455,18 +515,23 @@ const startAnalysis = async () => {
 
     const extraParams = {}
 
-    // 根据模式构建参数
-    if (currentMode.value === 'stirrup' && calibration.pixelPerMm > 0) {
+    // 根据模式构建参数 — CV 检测层向下兼容映射
+    if ((currentMode.value === 'column_stirrup' || currentMode.value === 'beam_stirrup') && calibration.pixelPerMm > 0) {
       extraParams.component_type = 'beam_column'
       extraParams.pixel_per_mm = calibration.pixelPerMm
       extraParams.tolerance = detectParams.tolerance
       extraParams.target_spacing_dense = pingfaParams.stirrup.dense
       extraParams.target_spacing_sparse = pingfaParams.stirrup.normal
-    } else if (currentMode.value === 'slab_wall' && calibration.pixelPerMm > 0) {
+    } else if (currentMode.value === 'slab_mesh' && calibration.pixelPerMm > 0) {
       extraParams.component_type = 'slab_wall'
       extraParams.pixel_per_mm = calibration.pixelPerMm
       extraParams.tolerance = detectParams.tolerance
-      extraParams.target_spacing = pingfaParams.slab.spacingX
+      extraParams.target_spacing = pingfaParams.slab.bottomSpacing
+    } else if (currentMode.value === 'wall_mesh' && calibration.pixelPerMm > 0) {
+      extraParams.component_type = 'slab_wall'
+      extraParams.pixel_per_mm = calibration.pixelPerMm
+      extraParams.tolerance = detectParams.tolerance
+      extraParams.target_spacing = pingfaParams.wall.horizontalSpacing
     }
 
     const data = await api.analyze(
@@ -685,6 +750,17 @@ const saveRecord = async () => {
         </div>
       </el-card>
 
+      <!-- ===== 🧠 AI 审图专家分析报告 ===== -->
+      <el-card v-if="cadParseResult.success && !['material', 'material_vlm'].includes(currentMode)" class="control-card ai-report-card" :body-style="{ padding: '0' }">
+        <template #header>
+          <div class="card-header">
+            <el-icon :style="{ color: '#E040FB' }"><MagicStick /></el-icon>
+            <span>🧠 AI 审图专家分析报告</span>
+          </div>
+        </template>
+        <div class="ai-report-content" v-html="aiReportHtml || '<p style=&quot;color:#a0aec0&quot;>模型未生成分析报告</p>'"></div>
+      </el-card>
+
       <!-- ===== 平法参数 — 动态表单 ===== -->
       <el-card v-if="!['material', 'material_vlm'].includes(currentMode)" class="control-card" :body-style="{ padding: '12px' }">
         <template #header>
@@ -697,7 +773,7 @@ const saveRecord = async () => {
         <!-- 柱纵筋 -->
         <div v-if="currentMode === 'column_longitudinal'" class="compact-form">
           <div v-if="cadParseResult.success && cadParseResult.component_type === 'column'" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">🤖 AI 已自动填充，可手动微调</el-tag>
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对，如有偏差支持手动修改。</el-tag>
           </div>
           <div class="form-row">
             <span class="label">角筋 (根)</span>
@@ -720,7 +796,7 @@ const saveRecord = async () => {
         <!-- 梁主筋 -->
         <div v-else-if="currentMode === 'beam_longitudinal'" class="compact-form">
           <div v-if="cadParseResult.success && cadParseResult.component_type === 'beam'" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">🤖 AI 已自动填充，可手动微调</el-tag>
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对，如有偏差支持手动修改。</el-tag>
           </div>
           <div class="form-row">
             <span class="label">上部纵筋 (根)</span>
@@ -744,10 +820,10 @@ const saveRecord = async () => {
           </div>
         </div>
 
-        <!-- 箍筋间距 -->
-        <div v-else-if="currentMode === 'stirrup'" class="compact-form">
+        <!-- 柱箍筋间距 -->
+        <div v-else-if="currentMode === 'column_stirrup'" class="compact-form">
           <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">🤖 AI 已自动填充，可手动微调</el-tag>
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
           </div>
           <div v-else class="ai-fill-hint">
             <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
@@ -766,21 +842,65 @@ const saveRecord = async () => {
           </div>
         </div>
 
-        <!-- 板/墙间距 -->
-        <div v-else-if="currentMode === 'slab_wall'" class="compact-form">
+        <!-- 梁箍筋间距 -->
+        <div v-else-if="currentMode === 'beam_stirrup'" class="compact-form">
           <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">🤖 AI 已自动填充，可手动微调</el-tag>
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
           </div>
           <div v-else class="ai-fill-hint">
             <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
           </div>
           <div class="form-row">
-            <span class="label">纵向设计间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.slab.spacingX" :min="50" :max="500" :step="10" size="small" />
+            <span class="label">加密区间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.stirrup.dense" :min="50" :max="300" :step="10" size="small" />
           </div>
           <div class="form-row">
-            <span class="label">横向设计间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.slab.spacingY" :min="50" :max="500" :step="10" size="small" />
+            <span class="label">非加密区间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.stirrup.normal" :min="100" :max="500" :step="10" size="small" />
+          </div>
+          <div class="form-row">
+            <span class="label">误差阈值 (mm)</span>
+            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
+          </div>
+        </div>
+
+        <!-- 楼板钢筋间距 -->
+        <div v-else-if="currentMode === 'slab_mesh'" class="compact-form">
+          <div v-if="cadParseResult.success" class="ai-fill-hint">
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
+          </div>
+          <div v-else class="ai-fill-hint">
+            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
+          </div>
+          <div class="form-row">
+            <span class="label">受力底筋间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.slab.bottomSpacing" :min="50" :max="500" :step="10" size="small" />
+          </div>
+          <div class="form-row">
+            <span class="label">支座负筋/面筋间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.slab.topSpacing" :min="50" :max="500" :step="10" size="small" />
+          </div>
+          <div class="form-row">
+            <span class="label">误差阈值 (mm)</span>
+            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
+          </div>
+        </div>
+
+        <!-- 剪力墙钢筋间距 -->
+        <div v-else-if="currentMode === 'wall_mesh'" class="compact-form">
+          <div v-if="cadParseResult.success" class="ai-fill-hint">
+            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
+          </div>
+          <div v-else class="ai-fill-hint">
+            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
+          </div>
+          <div class="form-row">
+            <span class="label">水平分布筋间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.wall.horizontalSpacing" :min="50" :max="500" :step="10" size="small" />
+          </div>
+          <div class="form-row">
+            <span class="label">竖向分布筋间距 (mm)</span>
+            <el-input-number v-model="pingfaParams.wall.verticalSpacing" :min="50" :max="500" :step="10" size="small" />
           </div>
           <div class="form-row">
             <span class="label">误差阈值 (mm)</span>
@@ -994,7 +1114,7 @@ const saveRecord = async () => {
       </el-card>
 
       <!-- 间距检测结果 -->
-      <el-card v-if="['stirrup', 'slab_wall'].includes(currentMode) && spacingResults.length" class="result-card result-pass">
+      <el-card v-if="['column_stirrup', 'beam_stirrup', 'slab_mesh', 'wall_mesh'].includes(currentMode) && spacingResults.length" class="result-card result-pass">
         <template #header>
           <div class="card-header"><el-icon><DataAnalysis /></el-icon><span>间距检测结果</span></div>
         </template>
@@ -1098,11 +1218,11 @@ const saveRecord = async () => {
         <div class="legend-box" v-if="result.predictions.length">
           <div class="legend-item"><span class="dot" style="background:#00e676"></span>
             {{ spacingResults.length
-              ? (currentMode === 'stirrup' ? '非加密区合格' : '合格')
+              ? (['column_stirrup', 'beam_stirrup'].includes(currentMode) ? '非加密区合格' : '合格')
               : '检测框'
             }}
           </div>
-          <div class="legend-item" v-if="spacingResults.length && currentMode === 'stirrup'">
+          <div class="legend-item" v-if="spacingResults.length && ['column_stirrup', 'beam_stirrup'].includes(currentMode)">
             <span class="dot" style="background:#00e5ff"></span>加密区合格
           </div>
           <div class="legend-item" v-if="spacingResults.length">
@@ -1683,5 +1803,92 @@ const saveRecord = async () => {
 
 .ai-fill-hint {
   margin-bottom: 8px;
+}
+
+/* ===== AI 审图报告面板 ===== */
+.ai-report-card {
+  border-left: 3px solid #E040FB;
+}
+
+.ai-report-card :deep(.el-collapse) {
+  border: none;
+}
+
+.ai-report-card :deep(.el-collapse-item__header) {
+  background: #3a4556;
+  color: #cbd5e0;
+  border-bottom: 1px solid #4a5568;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+.ai-report-card :deep(.el-collapse-item__wrap) {
+  background: #2d3748;
+  border-bottom: none;
+}
+
+.ai-report-card :deep(.el-collapse-item__content) {
+  padding: 0;
+}
+
+.ai-report-content {
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #cbd5e0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.ai-report-content :deep(h1),
+.ai-report-content :deep(h2),
+.ai-report-content :deep(h3) {
+  color: #e2e8f0;
+  margin: 12px 0 6px;
+  font-size: 15px;
+}
+
+.ai-report-content :deep(h2) {
+  font-size: 14px;
+  border-bottom: 1px solid #4a5568;
+  padding-bottom: 4px;
+}
+
+.ai-report-content :deep(h3) {
+  font-size: 13px;
+}
+
+.ai-report-content :deep(strong) {
+  color: #f6e05e;
+}
+
+.ai-report-content :deep(ul),
+.ai-report-content :deep(ol) {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+
+.ai-report-content :deep(li) {
+  margin: 3px 0;
+}
+
+.ai-report-content :deep(code) {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+  color: #68d391;
+}
+
+.ai-report-content :deep(pre) {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 10px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.ai-report-content :deep(p) {
+  margin: 6px 0;
 }
 </style>
