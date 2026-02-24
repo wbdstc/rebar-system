@@ -2,7 +2,7 @@
 VLM (Vision Language Model) 大模型调用服务
 用于解析 CAD 图纸截图，自动提取平法参数
 
-支持构件类型：柱(column)、梁(beam)、板/墙(slab/wall)
+支持构件类型：柱(column)、梁(beam)、板(slab)、墙(wall)
 内置 16G101 平法专家知识库，提升复杂标注解析准确率
 输出模式：思维链(CoT)推理报告 + JSON 结构化数据双轨制
 使用智谱 AI GLM-4V 多模态大模型
@@ -23,41 +23,71 @@ except ImportError:
     print("[警告] zhipuai 未安装，CAD 图纸解析功能不可用。请运行: pip install zhipuai")
 
 # 智谱 AI API Key
-ZHIPU_API_KEY = os.environ.get('ZHIPU_API_KEY', '53fd371c732b403cb6ac7e009a6946a7.nCrwtHF2LJBa26cS')
+ZHIPU_API_KEY = os.environ.get('ZHIPU_API_KEY', '22efb9769fdc45e38d14e3af6f2cdaa0.Rja37r4VRnqu40rZ')
+
+# 模型选择（便于未来切换）
+GLM_MODEL = os.environ.get('GLM_MODEL', 'glm-4v-flash')
 
 
 # =============================================
-# 动态 Prompt 构建（强制先分析后填表）
+# 动态 Prompt 构建（保持短小 + 精准改进）
 # =============================================
 
 def _build_prompt(component_type: str) -> str:
-    """强制模型先输出分析过程，再填 JSON 表格。"""
+    """
+    构建 prompt。
+
+    设计原则（glm-4v 兼容性约束）：
+    - 总长度控制在 400 字以内（过长会触发 <|observation|> 控制符）
+    - 不使用 system 消息（glm-4v 对 system role 支持不稳定）
+    - 保持"两步"结构（已验证可用的格式）
+    - 在有限篇幅内嵌入反幻觉约束和关键平法速查
+    """
 
     if component_type == 'beam':
         component_label = "梁"
-        analysis_task = "请你逐项分析图中标注的信息：1)上部纵筋的规格和根数 2)下部纵筋的规格和根数 3)是否有腰筋 4)箍筋的直径、加密区间距和非加密区间距。每一项都写出你是怎么从图中读出来的。"
+        analysis_task = (
+            "1)上部纵筋的规格和根数（若有分排如2/4需相加）"
+            " 2)下部纵筋的规格和根数"
+            " 3)是否有腰筋（G或N开头），有则写根数，无则写0"
+            " 4)箍筋的直径、加密区间距和非加密区间距、肢数。"
+        )
+        example = "例：上部筋2C25→top_bars_total=2，Φ8@100/200(2)→stirrup_dense=100,stirrup_normal=200,stirrup_legs=2"
         json_block = '{"top_bars_total": 0, "bottom_bars_total": 0, "waist_bars": 0, "stirrup_dense": 0, "stirrup_normal": 0, "stirrup_legs": 0}'
+
     elif component_type == 'slab':
         component_label = "楼板"
-        analysis_task = "请你逐项分析图中标注的信息：1)钢筋的规格 2)间距标注数值。每一项都写出你是怎么从图中读出来的。"
+        analysis_task = "1)受力钢筋的规格 2)间距标注数值（@后面的数字）。"
+        example = "例：C10@150→design_spacing=150"
         json_block = '{"design_spacing": 0}'
+
     elif component_type == 'wall':
         component_label = "剪力墙"
-        analysis_task = "请你逐项分析图中标注的信息：1)水平分布筋规格和间距 2)竖向分布筋规格和间距。每一项都写出你是怎么从图中读出来的。"
+        analysis_task = "1)水平分布筋规格和间距 2)竖向分布筋规格和间距。若只标一个间距则水平竖向相同。"
+        example = "例：Φ10@200→design_spacing=200"
         json_block = '{"design_spacing": 0}'
-    else:
+
+    else:  # column
         component_label = "柱"
-        analysis_task = "请你逐项分析图中标注的信息：1)截面尺寸（若分段标注如200+200需相加得400） 2)角筋（截面四角的钢筋）的规格和根数 3)中部筋/边部纵筋的规格和根数 4)纵筋总数 5)箍筋的直径、加密区间距和非加密区间距（如A8@100/200则加密区=100，非加密区=200）。每一项都写出你是怎么从图中读出来的。注意：柱子不存在'横筋'这个术语。"
+        analysis_task = (
+            "1)截面尺寸（若分段标注如200+200需相加）。"
+            "2)角筋的规格和根数。请独立、仔细辨认角筋标注文字，绝不可与中部筋的规格混淆！"
+            "3)中部筋的规格和根数。"
+            "4)纵筋总数（仅需将角筋与中部筋的【根数】相加，不要合并规格）。"
+            "5)箍筋的直径、加密区与非加密区间距（如A8@100/200则加密=100，非加密=200）。"
+        )
+        example = "例：角筋4C25，中部筋8C20，总数12根→corner_bars=4,middle_bars=8,total_bars=12"
         json_block = '{"corner_bars": 0, "middle_bars": 0, "total_bars": 0, "stirrup_dense": 0, "stirrup_normal": 0}'
 
-    prompt = f"""这是一张【{component_label}】的CAD截面配筋图。
+    prompt = f"""这是一张【{component_label}】的CAD截面配筋图。请仔细看图，完成以下两步。
 
-请你先完成分析，然后再填表。
-
-第一步：写出你的分析过程。
+第一步 - 分析报告：
+逐项读取图中的标注信息，写出你的判断依据。只提取图中可见标注，看不到的填0，不要猜测。
 {analysis_task}
+{example}
 
-第二步：分析写完后，根据你在第一步中得出的数值，填写下面的JSON（把0替换成实际数值，没有的保持0）：
+第二步 - 填写JSON：
+根据你在第一步中分析出的数字填入JSON。你在报告里写了什么数字，JSON里就必须填同样的数字！数值为纯整数不带单位。
 ```json
 {json_block}
 ```"""
@@ -102,26 +132,27 @@ def parse_cad_image(image_data: bytes, component_type: str = 'column') -> dict:
 
         client = ZhipuAI(api_key=ZHIPU_API_KEY)
         response = client.chat.completions.create(
-            model="glm-4v",
+            model=GLM_MODEL,
             messages=[
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": "text",
-                            "text": prompt
-                        },
-                        {
                             "type": "image_url",
+                            # 修改后
                             "image_url": {
                                 "url": img_base64
                             }
+                        },
+                        {
+                            "type": "text",
+                            "text": prompt
                         }
                     ]
                 }
             ],
             temperature=0.1,
-            max_tokens=2048,
+            max_tokens=1024,
         )
 
         raw_response = response.choices[0].message.content.strip()
@@ -249,20 +280,21 @@ def verify_material(image_data: bytes) -> dict:
 
         client = ZhipuAI(api_key=ZHIPU_API_KEY)
         response = client.chat.completions.create(
-            model="glm-4v",
+            model=GLM_MODEL,
             messages=[
                 {
                     "role": "user",
                     "content": [
                         {
-                            "type": "text",
-                            "text": MATERIAL_VERIFY_PROMPT
-                        },
-                        {
                             "type": "image_url",
+                            # 修改后
                             "image_url": {
                                 "url": img_base64
                             }
+                        },
+                        {
+                            "type": "text",
+                            "text": MATERIAL_VERIFY_PROMPT
                         }
                     ]
                 }
