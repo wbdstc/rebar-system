@@ -70,13 +70,19 @@ def _build_prompt(component_type: str) -> str:
     else:  # column
         component_label = "柱"
         analysis_task = (
-            "1)截面尺寸（若分段标注如200+200需相加）。"
-            "2)角筋的规格和根数。请独立、仔细辨认角筋标注文字，绝不可与中部筋的规格混淆！"
-            "3)中部筋的规格和根数。"
-            "4)纵筋总数（仅需将角筋与中部筋的【根数】相加，不要合并规格）。"
-            "5)箍筋的直径、加密区与非加密区间距（如A8@100/200则加密=100，非加密=200）。"
+            "分析以下5项内容，每项必须严格按照【结论】+【判断依据】的结构输出：\n"
+            "1) 截面尺寸（若分段标注如200+200需相加计算）。\n"
+            "2) 角筋的规格和根数（仔细辨认，严禁与中部筋混淆）。\n"
+            "3) 中部筋的规格和根数。\n"
+            "4) 纵筋总数（角筋与中部筋根数之和）。\n"
+            "5) 箍筋直径及加密/非加密区间距。"
         )
-        example = "例：角筋4C25，中部筋8C20，总数12根→corner_bars=4,middle_bars=8,total_bars=12"
+        example = (
+            "报告格式必须如下例所示：\n"
+            "2) 角筋的规格和根数：4C25\n"
+            "判断依据：图纸右上角引出线明确标注为“角筋 4C25”。\n"
+            "-> 数据映射示例: corner_bars=4, middle_bars=8, total_bars=12"
+        )
         json_block = '{"corner_bars": 0, "middle_bars": 0, "total_bars": 0, "stirrup_dense": 0, "stirrup_normal": 0}'
 
     prompt = f"""这是一张【{component_label}】的CAD截面配筋图。请仔细看图，完成以下两步。

@@ -116,15 +116,17 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-container class="records-container">
-    <el-header class="page-header">
-      <div class="header-left">
+  <el-container class="flex flex-col h-screen bg-records bg-cover bg-center bg-no-repeat bg-fixed text-slate-800 relative">
+    <div class="absolute inset-0 bg-white/40 backdrop-blur-sm pointer-events-none"></div>
+
+    <el-header class="page-header bg-white/70 backdrop-blur-2xl border-b border-white/60 shadow-sm relative z-10">
+      <div class="header-left flex items-center gap-3">
         <el-button text @click="router.push('/')">
           <el-icon><Back /></el-icon>
         </el-button>
-        <h2>检测记录</h2>
+        <h2 class="text-slate-800 font-bold m-0">检测记录</h2>
       </div>
-      <div class="header-right">
+      <div class="header-right flex gap-3">
         <el-select v-model="filterType" placeholder="全部类型" clearable @change="handleFilterChange">
           <el-option value="spacing" label="间距检测" />
           <el-option value="counting" label="计数检测" />
@@ -136,8 +138,8 @@ onMounted(() => {
       </div>
     </el-header>
 
-    <el-main class="main-content">
-      <el-table :data="records" v-loading="loading" stripe style="width: 100%">
+    <el-main class="p-6 relative z-10">
+      <el-table :data="records" v-loading="loading" stripe style="width: 100%" class="custom-table">
         <el-table-column prop="record_id" label="记录编号" width="180" />
         <el-table-column prop="inspection_type" label="检测类型" width="120">
           <template #default="{ row }">
@@ -197,58 +199,37 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.records-container {
-  height: 100vh;
-  background: #1a1c2c;
-  flex-direction: column;
+@reference "../style.css";
+
+.bg-records {
+  background-image: url('../assets/11.jpg');
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #2d3748;
-  padding: 0 24px;
-  border-bottom: 1px solid #4a5568;
+  @apply flex justify-between items-center px-6;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.custom-table {
+  @apply bg-white/60 backdrop-blur-xl border border-white/60 rounded-xl overflow-hidden shadow-md;
+  --el-table-border-color: rgba(255, 255, 255, 0.5);
+  --el-table-row-hover-bg-color: rgba(255, 255, 255, 0.4);
 }
 
-.header-left h2 {
-  color: #e2e8f0;
-  margin: 0;
+.custom-table :deep(th.el-table__cell) {
+  @apply !bg-white/40 !text-slate-800 font-semibold !border-b !border-white/50;
 }
 
-.header-right {
-  display: flex;
-  gap: 12px;
+.custom-table :deep(td.el-table__cell) {
+  @apply bg-transparent text-slate-700 border-b border-white/30;
 }
 
-.main-content {
-  padding: 24px;
+.custom-table :deep(.el-table__row--striped td.el-table__cell) {
+  @apply bg-white/30;
 }
 
-.el-table {
-  background: transparent;
-}
-
-.el-table :deep(th.el-table__cell) {
-  background: #2d3748;
-  color: #e2e8f0;
-}
-
-.el-table :deep(td.el-table__cell) {
-  background: #3a4556;
-  color: #e2e8f0;
-  border-bottom: 1px solid #4a5568;
-}
-
-.el-table :deep(.el-table__row--striped td.el-table__cell) {
-  background: #2d3748;
+/* 隐藏外边框 */
+.custom-table::before, .custom-table::after {
+  display: none;
 }
 
 .text-muted {

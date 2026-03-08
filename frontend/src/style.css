@@ -1,5 +1,6 @@
-/* Rebar System - Global Styles */
+@import "tailwindcss";
 
+/* Rebar System - Global Styles */
 :root {
   --bg-primary: #1a1c2c;
   --bg-secondary: #2d3748;

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, watch, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { marked } from 'marked'
 import api from '../api'
 
@@ -60,27 +60,75 @@ const inspectionModes = [
     backendMode: 'spacing',
     desc: '检测剪力墙分布筋间距，比对设计间距'
   },
-  {
-    value: 'material',
-    label: '进场原材检测 (Material)',
-    icon: 'Box',
-    color: '#F56C6C',
-    backendMode: 'counting',
-    desc: '进场钢筋端面计数与直径测量'
-  },
-  {
-    value: 'material_vlm',
-    label: '原材微观核验 (VLM)',
-    icon: 'View',
-    color: '#9C27B0',
-    backendMode: 'vlm',
-    desc: 'AI 识别钢筋表面轧印，提取牌号/抗震/直径'
-  }
 ]
+
 
 // =============================================
 // 状态定义
 // =============================================
+
+// =============================================
+// Dashboard 导航与步骤状态
+// =============================================
+
+// =============================================
+// 新手引导 (Tour) 状态
+// =============================================
+const showTour = ref(false)
+const tourOpen = ref(false)
+const tourStep1Ref = ref(null)
+const tourStep2Ref = ref(null)
+const tourStep3Ref = ref(null)
+
+onMounted(() => {
+  // 检查是否是首次进入
+  const hasSeenTour = localStorage.getItem('hasSeenWorkBenchTour')
+  if (!hasSeenTour) {
+    setTimeout(() => {
+      tourOpen.value = true
+    }, 500)
+  }
+})
+
+const onTourClose = () => {
+  tourOpen.value = false
+  localStorage.setItem('hasSeenWorkBenchTour', 'true')
+}
+
+const currentMenu = ref('column')
+const activeStep = ref('step1')
+
+const handleMenuSelect = (index) => {
+  if (index === 'project') {
+    router.push('/records')
+    return
+  }
+  if (index === 'settings') {
+    import('element-plus').then(({ ElMessage }) => {
+      ElMessage.info('设置功能开发中...')
+    })
+    return
+  }
+  const modeMap = {
+    'column': 'column_longitudinal',
+    'beam': 'beam_longitudinal',
+    'slab': 'slab_mesh',
+    'wall': 'wall_mesh'
+  }
+  if (modeMap[index]) {
+    currentMode.value = modeMap[index]
+    currentMenu.value = index
+  }
+}
+
+watch(currentMenu, (newMenu) => {
+  if (newMenu === 'column' && !currentMode.value.startsWith('column')) {
+    currentMode.value = 'column_longitudinal'
+  } else if (newMenu === 'beam' && !currentMode.value.startsWith('beam')) {
+    currentMode.value = 'beam_longitudinal'
+  }
+})
+
 const currentMode = ref('column_longitudinal')
 const isLoading = ref(false)
 const imageFile = ref(null)
@@ -175,6 +223,10 @@ const cadParseResult = reactive({
 const aiReportHtml = computed(() => {
   if (!aiReport.value) return ''
   return marked(aiReport.value)
+})
+
+watch(cadFile, (newVal) => {
+  if (newVal && activeStep.value === 'step2') activeStep.value = 'step1'
 })
 
 // =============================================
@@ -350,6 +402,17 @@ const parseCadImage = async () => {
 
     if (data.success) {
       cadParseResult.success = true
+    
+    ElNotification({
+      title: '图纸解析成功',
+      message: '设计参数已自动填入上方配置面板，即将进入【现场比对】步骤。',
+      type: 'success',
+      duration: 4000
+    })
+    
+    setTimeout(() => {
+      activeStep.value = 'step2'
+    }, 1500)
       cadParseResult.component_type = compType
 
       // 存储 AI 审图报告（Markdown）
@@ -679,1216 +742,662 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <el-container class="workbench-container">
-    <!-- ============ 侧边栏 ============ -->
-    <el-aside width="380px" class="sidebar">
-      <!-- 构件模式选择器 -->
-      <el-card class="control-card mode-selector-card" :body-style="{ padding: '12px' }">
-        <el-select
-          v-model="currentMode"
-          size="default"
-          class="mode-select"
-          placeholder="选择构件检测类型"
+  <el-container class="h-screen bg-slate-50 text-slate-800 relative flex flex-col overflow-hidden">
+    <!-- 顶部导航栏 (工程蓝底色) -->
+    <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600 text-white shadow-md h-14 shrink-0">
+      <div class="flex items-center gap-4">
+        <el-button text class="!text-white hover:!bg-white/10" @click="router.push('/')">
+          <el-icon class="mr-1 text-lg"><Back /></el-icon> 返回首页
+        </el-button>
+      </div>
+      <div class="text-[17px] font-bold tracking-wider flex items-center gap-3">
+        <span>智能审图工作台</span>
+        <div class="w-1.5 h-1.5 rounded-full bg-white/60"></div>
+        <span class="text-blue-100 font-medium">{{ currentModeConfig?.label || 'AI 钢筋智能检测' }}</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <el-button text class="!text-white hover:!bg-white/10">
+          <el-icon class="mr-1 text-lg"><QuestionFilled /></el-icon> 帮助
+        </el-button>
+      </div>
+    </el-header>
+
+    <el-container class="relative z-10 overflow-hidden flex-1">
+      <!-- 左侧导航栏 -->
+      <el-aside width="200px" class="bg-blue-600 border-r border-blue-700 shadow-lg flex flex-col z-20">
+        <div class="p-4 border-b border-blue-500/30 flex items-center gap-2 text-blue-100 text-xs font-bold uppercase tracking-wider">
+          <el-icon><Menu /></el-icon> 验收模块
+        </div>
+        <el-menu
+          :default-active="currentMenu"
+          class="!border-r-0 bg-transparent flex-1 pt-2 w-full custom-left-menu"
+          @select="handleMenuSelect"
         >
-          <el-option
-            v-for="m in inspectionModes"
-            :key="m.value"
-            :value="m.value"
-            :label="m.label"
-          >
-            <div class="mode-option">
-              <el-icon :style="{ color: m.color }"><component :is="m.icon" /></el-icon>
-              <span>{{ m.label }}</span>
-            </div>
-          </el-option>
-        </el-select>
-      </el-card>
+          <el-menu-item index="project" class="menu-item-hover">
+            <el-icon><List /></el-icon>
+            <template #title>检测记录</template>
+          </el-menu-item>
+          
+          <el-menu-item index="column" class="menu-item-hover">
+            <el-icon><DataBoard /></el-icon>
+            <template #title>柱检测</template>
+          </el-menu-item>
+          
+          <el-menu-item index="beam" class="menu-item-hover">
+            <el-icon><TopRight /></el-icon>
+            <template #title>梁检测</template>
+          </el-menu-item>
+          
+          <el-menu-item index="slab" class="menu-item-hover">
+            <el-icon><Grid /></el-icon>
+            <template #title>板检测</template>
+          </el-menu-item>
+          
+          <el-menu-item index="wall" class="menu-item-hover">
+            <el-icon><Histogram /></el-icon>
+            <template #title>墙检测</template>
+          </el-menu-item>
 
-      <!-- ===== Step 1: CAD 图纸解析（全局，material/material_vlm 除外） ===== -->
-      <el-card v-if="!['material', 'material_vlm'].includes(currentMode)" class="control-card step-card" :body-style="{ padding: '12px' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: '#E040FB' }"><Picture /></el-icon>
-            <span>Step 1 · 图纸解析 (AI)</span>
-          </div>
-        </template>
 
-        <div class="cad-section">
-          <el-upload
-            :auto-upload="false"
-            :show-file-list="false"
-            accept="image/*"
-            @change="handleCadFileChange"
-            class="cad-upload-compact"
-          >
-            <el-button :type="cadFile ? 'success' : 'primary'" plain size="small" class="full-width">
-              <el-icon class="el-icon--left"><Upload /></el-icon>
-              {{ cadFile ? '已选择 CAD 截图' : '上传 CAD 截屏' }}
-            </el-button>
-          </el-upload>
 
-          <el-button
-            v-if="cadFile"
-            type="primary"
-            :loading="cadParsing"
-            size="small"
-            class="cad-parse-btn-compact"
-            @click="parseCadImage"
-          >
-            {{ cadParsing ? '解析中...' : '智能提取' }}
-          </el-button>
-        </div>
-
-        <div v-if="cadParseHint" class="compact-hint" :class="{ 'error': !cadParseResult.success }">
-          {{ cadParseHint }}
-        </div>
-
-        <div v-if="cadParseResult.success && cadParseResult.stirrup_legs" class="ai-tag-row">
-          <el-tag type="warning" size="small" effect="plain">
-            AI 识别为 {{ cadParseResult.stirrup_legs }} 肢箍
-          </el-tag>
-        </div>
-      </el-card>
-
-      <!-- ===== 🧠 AI 审图专家分析报告 ===== -->
-      <el-card v-if="cadParseResult.success && !['material', 'material_vlm'].includes(currentMode)" class="control-card ai-report-card" :body-style="{ padding: '0' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: '#E040FB' }"><MagicStick /></el-icon>
-            <span>🧠 AI 审图专家分析报告</span>
-          </div>
-        </template>
-        <div class="ai-report-content" v-html="aiReportHtml || '<p style=&quot;color:#a0aec0&quot;>模型未生成分析报告</p>'"></div>
-      </el-card>
-
-      <!-- ===== 平法参数 — 动态表单 ===== -->
-      <el-card v-if="!['material', 'material_vlm'].includes(currentMode)" class="control-card" :body-style="{ padding: '12px' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: currentModeConfig.color }"><component :is="currentModeConfig.icon" /></el-icon>
-            <span>平法参数 — {{ currentModeConfig.label.split(' - ')[1]?.split(' ')[0] || currentModeConfig.label }}</span>
-          </div>
-        </template>
-
-        <!-- 柱纵筋 -->
-        <div v-if="currentMode === 'column_longitudinal'" class="compact-form">
-          <div v-if="cadParseResult.success && cadParseResult.component_type === 'column'" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对，如有偏差支持手动修改。</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">角筋 (根)</span>
-            <el-input-number v-model="pingfaParams.column.corner" :min="4" :max="20" :step="2" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">中部筋/边筋 (根)</span>
-            <el-input-number v-model="pingfaParams.column.middle" :min="0" :max="30" :step="1" size="small" />
-          </div>
-          <div class="form-row total-row">
-            <span class="label">设计总数</span>
-            <span class="value">{{ designTotal }}</span>
-          </div>
-          <div v-if="cadParseResult.stirrup_dense" class="form-row stirrup-row">
-            <span class="label">箍筋间距</span>
-            <span class="value">{{ cadParseResult.stirrup_dense }}/{{ cadParseResult.stirrup_normal }}</span>
-          </div>
-        </div>
-
-        <!-- 梁主筋 -->
-        <div v-else-if="currentMode === 'beam_longitudinal'" class="compact-form">
-          <div v-if="cadParseResult.success && cadParseResult.component_type === 'beam'" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对，如有偏差支持手动修改。</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">上部纵筋 (根)</span>
-            <el-input-number v-model="pingfaParams.beam.top" :min="0" :max="30" :step="1" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">下部纵筋 (根)</span>
-            <el-input-number v-model="pingfaParams.beam.bottom" :min="0" :max="30" :step="1" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">腰筋 G/N (根)</span>
-            <el-input-number v-model="pingfaParams.beam.waist" :min="0" :max="20" :step="1" size="small" />
-          </div>
-          <div class="form-row total-row">
-            <span class="label">设计总数</span>
-            <span class="value">{{ designTotal }}</span>
-          </div>
-          <div v-if="cadParseResult.stirrup_legs" class="form-row stirrup-row">
-            <span class="label">箍筋</span>
-            <span class="value">{{ cadParseResult.stirrup_dense }}/{{ cadParseResult.stirrup_normal }} ({{ cadParseResult.stirrup_legs }}肢)</span>
-          </div>
-        </div>
-
-        <!-- 柱箍筋间距 -->
-        <div v-else-if="currentMode === 'column_stirrup'" class="compact-form">
-          <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
-          </div>
-          <div v-else class="ai-fill-hint">
-            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">加密区间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.stirrup.dense" :min="50" :max="300" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">非加密区间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.stirrup.normal" :min="100" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">误差阈值 (mm)</span>
-            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
-          </div>
-        </div>
-
-        <!-- 梁箍筋间距 -->
-        <div v-else-if="currentMode === 'beam_stirrup'" class="compact-form">
-          <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
-          </div>
-          <div v-else class="ai-fill-hint">
-            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">加密区间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.stirrup.dense" :min="50" :max="300" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">非加密区间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.stirrup.normal" :min="100" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">误差阈值 (mm)</span>
-            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
-          </div>
-        </div>
-
-        <!-- 楼板钢筋间距 -->
-        <div v-else-if="currentMode === 'slab_mesh'" class="compact-form">
-          <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
-          </div>
-          <div v-else class="ai-fill-hint">
-            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">受力底筋间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.slab.bottomSpacing" :min="50" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">支座负筋/面筋间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.slab.topSpacing" :min="50" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">误差阈值 (mm)</span>
-            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
-          </div>
-        </div>
-
-        <!-- 剪力墙钢筋间距 -->
-        <div v-else-if="currentMode === 'wall_mesh'" class="compact-form">
-          <div v-if="cadParseResult.success" class="ai-fill-hint">
-            <el-tag type="success" size="small" effect="plain">✨ AI 已根据上方报告为您自动填表，请结合报告人工核对。</el-tag>
-          </div>
-          <div v-else class="ai-fill-hint">
-            <el-tag type="info" size="small" effect="plain">↑ 可通过 Step 1 上传 CAD 自动填充</el-tag>
-          </div>
-          <div class="form-row">
-            <span class="label">水平分布筋间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.wall.horizontalSpacing" :min="50" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">竖向分布筋间距 (mm)</span>
-            <el-input-number v-model="pingfaParams.wall.verticalSpacing" :min="50" :max="500" :step="10" size="small" />
-          </div>
-          <div class="form-row">
-            <span class="label">误差阈值 (mm)</span>
-            <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" size="small" />
-          </div>
-        </div>
-      </el-card>
-
-      <!-- ===== 进场原材参数 ===== -->
-      <el-card v-if="currentMode === 'material'" class="control-card param-card">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: '#F56C6C' }"><Box /></el-icon>
-            <span>进场原材 — 标定参数</span>
-          </div>
-        </template>
-
-        <el-form label-width="auto" label-position="top">
-          <el-form-item>
-            <template #label>
-              <div class="param-label">
-                <span>参照物宽度 (Reference Width)</span>
-                <el-tag type="danger" size="small">mm</el-tag>
-              </div>
-            </template>
-            <el-input-number
-              v-model="materialParams.refLength"
-              :min="1" :max="500" :step="0.1"
-              :precision="1"
-              controls-position="right"
-              class="full-width"
-            />
-          </el-form-item>
-        </el-form>
-
-        <el-alert type="info" :closable="false" show-icon>
-          上传图片后，在画布上<strong>拖拽画框</strong>框选参照物进行标定
-        </el-alert>
-      </el-card>
-
-      <!-- ===== 通用检测参数 ===== -->
-      <el-card class="control-card">
-        <template #header>
-          <div class="card-header">
+          <el-menu-item index="settings" class="menu-item-hover" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1);">
             <el-icon><Setting /></el-icon>
-            <span>AI 检测参数</span>
+            <template #title>个人设置</template>
+          </el-menu-item>
+        </el-menu>
+      </el-aside>
+
+      <el-tour v-model="tourOpen" @close="onTourClose">
+        <el-tour-step :target="tourStep1Ref" title="第一步：配置参数" description="在这里通过手动输入或者 AI 图纸解析（下一步），配置当前构件的设计配筋参数。" />
+        <el-tour-step :target="tourStep2Ref" title="第二步：控制流程" description="在顶部切换【解析图纸】和【现场比对】模块。我们建议先解析图纸，再上传照片进行现场比对验证。" />
+        <el-tour-step :target="tourStep3Ref" title="第三步：上传与分析" description="在工作区域拖拽或点击上传您的 CAD 截图或实景照片。系统会自动分析并生成合规性账单。" />
+      </el-tour>
+
+      <!-- 主工作区 -->
+      <el-main class="bg-cad-grid p-6 flex flex-col gap-5 overflow-y-auto w-full">
+        <!-- 顶部：参数配置卡片 -->
+        <el-card ref="tourStep1Ref" class="dashboard-card shrink-0 shadow-sm border-slate-200 mb-5" :body-style="{ padding: '16px 24px' }">
+          <div class="flex flex-col xl:flex-row gap-8 items-start xl:items-center">
+            
+            <!-- 平法参数 (Left side) -->
+            <div class="flex-1 xl:border-r border-slate-200 xl:pr-8 flex flex-col justify-center">
+              
+              <div class="flex items-center gap-6 mb-4">
+                <div class="flex items-center gap-2 text-slate-800 font-bold text-base whitespace-nowrap">
+                  <el-icon class="text-blue-500"><EditPen /></el-icon> 📝 检测参数与要求
+                </div>
+                <!-- 检测子模式切换器 (Radio) -->
+                <div class="flex-1">
+                  <el-radio-group v-if="currentMenu === 'column'" v-model="currentMode" size="default">
+                    <el-radio-button value="column_longitudinal">纵筋 (计数)</el-radio-button>
+                    <el-radio-button value="column_stirrup">箍筋 (间距)</el-radio-button>
+                  </el-radio-group>
+                  <el-radio-group v-else-if="currentMenu === 'beam'" v-model="currentMode" size="default">
+                    <el-radio-button value="beam_longitudinal">主筋 (计数)</el-radio-button>
+                    <el-radio-button value="beam_stirrup">箍筋 (间距)</el-radio-button>
+                  </el-radio-group>
+                  <el-radio-group v-else-if="currentMenu === 'material'" v-model="currentMode" size="default">
+                    <el-radio-button value="material">截面计数拉拔</el-radio-button>
+                    <el-radio-button value="material_vlm">AI微观表面识别</el-radio-button>
+                  </el-radio-group>
+                  <el-tag v-else type="primary" effect="plain" class="border-blue-200">
+                    {{ backendMode === 'counting' ? '计数检测' : '间距检测' }}
+                  </el-tag>
+                </div>
+              </div>
+
+              <!-- 动态表单 -->
+              <div class="bg-slate-50/50 border border-slate-100 rounded-xl p-4 w-full">
+                
+                <!-- 柱纵筋 -->
+                <template v-if="currentMode === 'column_longitudinal'">
+                  <div class="grid grid-cols-2 gap-5 w-full xl:w-4/5">
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">角筋数量 (根)</span>
+                      <el-input-number v-model="pingfaParams.column.corner" :min="4" :max="20" :step="2" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">中部/边筋数量 (根)</span>
+                      <el-input-number v-model="pingfaParams.column.middle" :min="0" :max="30" :step="1" class="!w-full" controls-position="right" />
+                    </div>
+                  </div>
+                  <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between w-full xl:w-4/5">
+                    <span class="text-slate-600 text-sm font-bold">设计总数预估</span>
+                    <div class="text-emerald-500 text-3xl font-black tabular-nums">{{ designTotal }}</div>
+                  </div>
+                </template>
+
+                <!-- 梁主筋 -->
+                <template v-else-if="currentMode === 'beam_longitudinal'">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full">
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">上部纵筋 (根)</span>
+                      <el-input-number v-model="pingfaParams.beam.top" :min="0" :max="30" :step="1" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">下部纵筋 (根)</span>
+                      <el-input-number v-model="pingfaParams.beam.bottom" :min="0" :max="30" :step="1" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">腰筋 G/N (根)</span>
+                      <el-input-number v-model="pingfaParams.beam.waist" :min="0" :max="20" :step="1" class="!w-full" controls-position="right" />
+                    </div>
+                  </div>
+                  <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between w-full">
+                    <span class="text-slate-600 text-sm font-bold">设计总数预估</span>
+                    <div class="text-emerald-500 text-3xl font-black tabular-nums">{{ designTotal }}</div>
+                  </div>
+                </template>
+
+                <!-- 柱/梁 箍筋 -->
+                <template v-else-if="['column_stirrup', 'beam_stirrup'].includes(currentMode)">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mt-1">
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">加密区间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.stirrup.dense" :min="50" :max="300" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">非加密区间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.stirrup.normal" :min="100" :max="500" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">误差阈值 (mm)</span>
+                      <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" class="!w-full" controls-position="right" />
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 板钢筋间距 -->
+                <template v-else-if="currentMode === 'slab_mesh'">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mt-1">
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">底筋间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.slab.bottomSpacing" :min="50" :max="500" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">负筋/面筋间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.slab.topSpacing" :min="50" :max="500" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">误差阈值 (mm)</span>
+                      <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" class="!w-full" controls-position="right" />
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 墙钢筋间距 -->
+                <template v-else-if="currentMode === 'wall_mesh'">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 w-full mt-1">
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">水平间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.wall.horizontalSpacing" :min="50" :max="500" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">竖向间距 (mm)</span>
+                      <el-input-number v-model="pingfaParams.wall.verticalSpacing" :min="50" :max="500" :step="10" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="flex flex-col gap-2">
+                      <span class="text-slate-500 text-[13px] font-medium">误差阈值 (mm)</span>
+                      <el-input-number v-model="detectParams.tolerance" :min="1" :max="50" :step="5" class="!w-full" controls-position="right" />
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 原材计数尺寸 -->
+                <template v-else-if="currentMode === 'material'">
+                  <div class="flex flex-col gap-4 w-full">
+                    <div class="flex flex-col gap-2 xl:w-1/2">
+                      <span class="text-slate-500 text-[13px] font-medium">参照物标定宽度 (mm)</span>
+                      <el-input-number v-model="materialParams.refLength" :min="1" :max="500" :step="0.1" :precision="1" class="!w-full" controls-position="right" />
+                    </div>
+                    <div class="text-[13px] text-orange-500 flex items-center gap-2 bg-orange-50 px-4 py-2.5 rounded-lg border border-orange-100">
+                      <el-icon class="text-lg"><InfoFilled /></el-icon> 提示: 请在下方画布框选已知参照物（标准名片/卡牌通常为85.6mm宽）
+                    </div>
+                  </div>
+                </template>
+                
+                <!-- 微观 AI 识别 -->
+                <template v-else-if="currentMode === 'material_vlm'">
+                  <div class="w-full text-sm text-purple-700 bg-purple-50 p-4 rounded-xl border border-purple-100 flex items-start gap-3 shadow-sm">
+                    <el-icon class="mt-0.5 text-xl"><Opportunity /></el-icon>
+                    <div class="leading-relaxed">
+                      <strong class="text-purple-800 text-base">微观标牌语义识别</strong><br/>
+                      <span class="text-purple-600/90">结合大语言与视觉大模型，自动锁定并提取钢筋端面轧制标识（如 4E 22）。无需手工录入参数，自动比对截面直径、牌号级别与抗震要求（E）。</span>
+                    </div>
+                  </div>
+                </template>
+
+              </div>
+            </div>
+
+            <!-- AI Params (Right side) -->
+            <div class="w-full xl:w-96 shrink-0 flex flex-col justify-center">
+              <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center gap-2 text-slate-800 font-bold text-base">
+                  <el-icon class="text-indigo-500"><Setting /></el-icon> 🤖 AI 检测控制中心
+                </div>
+                <el-tag v-if="calibration.pixelPerMm > 0" type="success" effect="plain" size="small" class="border-green-200">
+                  <el-icon class="mr-1"><Tools /></el-icon> 标定 {{ calibration.pixelPerMm.toFixed(1) }}px/mm
+                </el-tag>
+              </div>
+
+              <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                <div class="flex justify-between items-center text-[13px] text-slate-600 mb-2">
+                  <span class="font-medium">计算机视觉模型置信度阈值</span>
+                  <span class="font-black text-indigo-600 text-lg tabular-nums leading-none"><span class="text-sm">≥</span> {{ detectParams.confidence }}<span class="text-xs font-normal text-indigo-400 ml-0.5">%</span></span>
+                </div>
+                <el-slider v-model="detectParams.confidence" :min="10" :max="90" class="custom-slider !mb-1" />
+              </div>
+
+              <div v-if="cadParseResult.success && !['material', 'material_vlm'].includes(currentMode)" class="mt-3 p-2.5 bg-green-50 rounded-lg border border-green-100 text-[13px] text-green-700 flex items-start gap-1.5 shadow-sm">
+                <el-icon class="mt-0.5"><CircleCheckFilled /></el-icon>
+                <span class="leading-tight">图纸配筋参数已由 AI 成功解析并导入。</span>
+              </div>
+            </div>
           </div>
-        </template>
-        <div class="param-item">
-          <span>置信度阈值 ({{ detectParams.confidence }}%)</span>
-          <el-slider v-model="detectParams.confidence" :min="10" :max="90" />
-        </div>
-      </el-card>
+        </el-card>
 
-      <!-- ===== Step 2: 现场照片上传（非 material_vlm） ===== -->
-      <el-card v-if="currentMode !== 'material_vlm'" class="control-card" :class="{ 'step-card': currentMode === 'column_longitudinal' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon><Camera /></el-icon>
-            <span>{{ currentMode === 'column_longitudinal' ? 'Step 2 · 上传现场实拍图进行比对' : '图像上传' }}</span>
+        <!-- 底部：上传与比对卡片 -->
+        <el-card class="dashboard-card flex-1 flex flex-col min-h-[400px] shadow-sm border-slate-200" :body-style="{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }">
+          
+          <!-- 卡片头部工作流步骤栏 -->
+          <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white">
+            <el-radio-group ref="tourStep2Ref" v-model="activeStep" size="large" class="step-radio-group shadow-sm rounded-lg overflow-hidden">
+              <el-radio-button value="step1" v-if="!['material', 'material_vlm'].includes(currentMode)">
+                步骤 1: 解析图纸
+              </el-radio-button>
+              <el-radio-button value="step2">
+                {{ ['material', 'material_vlm'].includes(currentMode) ? '▶ 上传并检测' : '▶ 步骤 2: 现场比对' }}
+              </el-radio-button>
+            </el-radio-group>
+            
+            <div class="flex items-center gap-4">
+              <!-- Result / State Badges -->
+              <el-tag v-if="complianceResult.status === 'PASS'" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 图模一致，合规通过</el-tag>
+              <el-tag v-else-if="complianceResult.status === 'FAIL'" type="danger" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><Warning /></el-icon> 图模不一致 (存在少筋)</el-tag>
+              <el-tag v-else-if="complianceResult.status === 'WARNING'" type="warning" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><Warning /></el-icon> 图模不一致 (现场多筋)</el-tag>
+              <el-tag v-else-if="result.detected_count || materialResult.success" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 检测完成</el-tag>
+
+               <el-button
+                 v-if="activeStep === 'step1'"
+                 type="primary"
+                 :loading="cadParsing"
+                 loading-icon="Loading"
+                 loading-text="正在智能解析图纸中..."
+                 :disabled="!cadFile"
+                 class="px-8 shadow-md !text-sm font-bold tracking-wide"
+                 style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;"
+                 @click="parseCadImage"
+               >
+                 <el-icon class="mr-2"><Cpu /></el-icon>
+                 智能解析参数
+               </el-button>
+               
+               <el-button
+                 v-else
+                 type="primary"
+                 :loading="isLoading || materialVerifying"
+                 loading-icon="Loading"
+                 loading-text="云端大模型计算中..."
+                 :disabled="!imageFile"
+                 class="px-8 shadow-md !text-sm font-bold tracking-wide"
+                 style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;"
+                 @click="currentMode === 'material_vlm' ? startMaterialVerify() : startAnalysis()"
+               >
+                 <el-icon class="mr-2"><Lightning /></el-icon>
+                 开始验证计算
+               </el-button>
+            </div>
           </div>
-        </template>
 
-        <el-alert
-          v-if="needsCalibration"
-          type="info" :closable="false" show-icon class="mb-3"
-        >
-          上传图片后，可在画布上拖拽画框标定参照物
-        </el-alert>
+          <!-- 卡片内容体：CAD或现场上传工作区 -->
+          <div ref="tourStep3Ref" class="flex-1 relative bg-cad-grid overflow-hidden flex min-h-[400px]">
+            
+            <!-- Step 1 View: CAD Upload & Report -->
+            <div v-show="activeStep === 'step1'" class="absolute inset-0 flex">
+              <!-- 右侧或中心的图纸上传区 -->
+              <div class="flex-1 p-6 flex flex-col h-full items-center justify-center border-r border-slate-200 overflow-y-auto">
+                <div class="w-full max-w-2xl h-full flex flex-col items-center justify-center">
+                  <el-upload
+                    drag
+                    :auto-upload="false"
+                    :show-file-list="false"
+                    accept="image/*"
+                    @change="handleCadFileChange"
+                    class="dashboard-upload w-full h-full text-center flex items-center justify-center flex-col"
+                  >
+                    <div v-if="cadPreview" class="w-full h-full rounded overflow-hidden flex items-center justify-center bg-transparent border border-slate-200 shadow-sm mx-auto p-2">
+                       <img :src="cadPreview" class="max-h-[300px] max-w-full object-contain" />
+                    </div>
+                    <div v-else class="py-24 flex flex-col items-center justify-center">
+                      <el-icon :size="72" class="text-blue-200 drop-shadow-sm mb-4"><DocumentCopy /></el-icon>
+                      <div class="el-upload__text text-slate-500 font-medium text-lg mt-4">
+                        将设计图纸 (CAD/PDF截图) 拖拽至此，或 <em class="text-blue-600 font-bold">点击上传</em>
+                      </div>
+                    </div>
+                  </el-upload>
+                </div>
+              </div>
+              
+              <!-- CAD 解析报告区 -->
+              <div class="w-96 bg-white flex flex-col h-full border-l border-slate-200 shrink-0">
+                <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
+                  <div class="font-bold flex items-center gap-2 text-slate-800"><el-icon class="text-purple-500"><Document /></el-icon> 智能审图专家报告</div>
+                </div>
+                <div class="flex-1 p-4 overflow-y-auto">
+                  <div v-if="aiReport" class="ai-report-content text-slate-600" v-html="aiReportHtml"></div>
+                  <div v-else class="text-center text-slate-400 mt-20 flex flex-col gap-3 items-center">
+                    <el-icon :size="48" class="text-slate-200"><DocumentCopy /></el-icon>
+                    <div class="text-sm">上传图纸并解析后<br/>在此展示详细结构说明</div>
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        <el-upload
-          drag
-          :auto-upload="false"
-          :show-file-list="false"
-          accept="image/*"
-          @change="handleFileChange"
-        >
-          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-          <div class="el-upload__text">拖拽或 <em>点击上传</em></div>
-        </el-upload>
-      </el-card>
+            <!-- Step 2 View: Camera/Picture Upload -->
+            <div v-show="activeStep === 'step2'" class="absolute inset-0 flex">
+              <div class="flex-1 relative overflow-hidden" style="background-color: #eaeff5; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px;">
+                
+                <!-- 拖拽上传空状态 -->
+                <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
+                  <div class="w-full max-w-3xl h-full max-h-[400px]">
+                    <el-upload
+                      drag
+                      :auto-upload="false"
+                      :show-file-list="false"
+                      accept="image/*"
+                      @change="handleFileChange"
+                      class="dashboard-upload w-full h-full flex items-center justify-center flex-col bg-white/60 backdrop-blur-sm border-2 border-dashed border-blue-300 rounded-2xl shadow-sm hover:border-blue-500 hover:bg-white/80 transition-all"
+                    >
+                      <div v-if="imagePreview && currentMode === 'material_vlm'" class="h-full w-full flex items-center justify-center bg-transparent p-4">
+                          <img :src="imagePreview" class="max-h-full max-w-full rounded-lg shadow-lg" />
+                      </div>
+                      <div v-else class="w-full h-full flex flex-col items-center justify-center py-16">
+                        <div class="w-24 h-24 mb-6 rounded-full bg-blue-50 flex items-center justify-center shadow-inner border border-blue-100">
+                           <el-icon :size="48" class="text-blue-500"><Camera /></el-icon>
+                        </div>
+                        <p class="text-slate-700 font-bold text-xl mb-2">
+                          <span v-if="currentMode === 'column_longitudinal'">上传柱截面现场图像</span>
+                          <span v-else-if="currentMode === 'material'">上传进场钢筋端面图</span>
+                          <span v-else-if="currentMode === 'material_vlm'">上传带有轧印面 (如 4E 22) 的特写原图</span>
+                          <span v-else>上传并拖拽施工现场图像</span>
+                        </p>
+                        <p class="text-slate-500 text-sm font-medium">系统将自动运行 CV 大模型比对合规性，支持快捷键粘贴照片</p>
+                      </div>
+                    </el-upload>
+                  </div>
+                </div>
 
-      <!-- ===== 原材微观核验专属区 ===== -->
-      <el-card v-if="currentMode === 'material_vlm'" class="control-card step-card" :body-style="{ padding: '16px' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: '#9C27B0' }"><View /></el-icon>
-            <span>原材微观核验 — 轧印识别</span>
+                <!-- 结果画板区 (只要有图片就直接显示) -->
+                <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 z-20 overflow-auto">
+                  <!-- 画板 -->
+                  <canvas
+                    ref="canvasRef"
+                    class="rounded shadow-xl bg-white max-w-full"
+                    :style="{ cursor: needsCalibration ? 'crosshair' : 'default', minWidth: '400px', objectFit: 'contain' }"
+                    @mousedown="handleMouseDown"
+                    @mousemove="handleMouseMove"
+                    @mouseup="handleMouseUp"
+                    @mouseleave="handleMouseUp"
+                  ></canvas>
+
+                  <!-- 重新上传按钮 (悬浮) -->
+                  <div class="absolute top-6 left-6 flex gap-2 z-30">
+                    <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
+                      <el-button size="default" class="shadow-md bg-white text-slate-700 hover:text-blue-500 border-0">
+                        <el-icon class="mr-1 font-bold text-lg"><RefreshRight /></el-icon> 重置与更换
+                      </el-button>
+                    </el-upload>
+                  </div>
+
+                  <!-- 图例说明箱 -->
+                  <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-w-[180px] z-30 transform transition-all" v-if="(result.predictions && result.predictions.length) || materialResult.success || (complianceResult.status)">
+                    <div class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3 tracking-widest uppercase">
+                       <el-icon class="mr-1 align-text-bottom"><InfoFilled/></el-icon> 结果与图例
+                    </div>
+                    
+                    <template v-if="currentMode === 'material_vlm'">
+                       <div class="text-sm">
+                         <div class="flex justify-between mb-2"><span class="text-slate-500">识别牌号</span> <strong class="text-emerald-600 bg-emerald-50 px-2 rounded">{{ materialResult.material_grade }}</strong></div>
+                         <div class="flex justify-between mb-2"><span class="text-slate-500">带E抗震</span> <strong :class="materialResult.is_seismic ? 'text-emerald-600 bg-emerald-50' : 'text-orange-500 bg-orange-50'" class="px-2 rounded">{{ materialResult.is_seismic ? '满足' : '未满足' }}</strong></div>
+                         <div class="flex justify-between"><span class="text-slate-500">公称直径</span> <strong class="text-emerald-600 bg-emerald-50 px-2 rounded">{{ materialResult.diameter }}mm</strong></div>
+                       </div>
+                    </template>
+                    <template v-else>
+                      <!-- Count Stats if Longitudinal or Material -->
+                      <div class="mb-3 border-b border-slate-100 pb-3" v-if="['column_longitudinal', 'beam_longitudinal', 'material'].includes(currentMode)">
+                         <div class="flex justify-between items-center text-sm mb-1">
+                           <span class="text-slate-500">检测件数</span>
+                           <span class="font-black text-emerald-600 text-lg tabular-nums">{{ result.detected_count }}</span>
+                         </div>
+                         <div class="flex justify-between items-center text-sm" v-if="currentMode === 'material'">
+                           <span class="text-slate-500">平均直径</span>
+                           <span class="font-bold text-slate-800 tabular-nums">{{ avgDiameter }} mm</span>
+                         </div>
+                      </div>
+                      
+                      <!-- Legend Colors -->
+                      <div class="flex items-center gap-2 text-xs text-slate-600 mb-2 font-medium">
+                        <span class="w-3 h-3 rounded bg-[#00e676] shadow-sm"></span> 
+                        {{ spacingResults.length ? (['column_stirrup', 'beam_stirrup'].includes(currentMode) ? '非加密区合格' : '合格') : '系统检测框' }}
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-slate-600 mb-2 font-medium" v-if="spacingResults.length && ['column_stirrup', 'beam_stirrup'].includes(currentMode)">
+                        <span class="w-3 h-3 rounded bg-[#00e5ff] shadow-sm"></span>加密区合格
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-slate-600 mb-2 font-medium" v-if="spacingResults.length">
+                        <span class="w-3 h-3 rounded bg-[#ff1744] shadow-sm"></span>超限误差段
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-slate-600 font-medium" v-if="needsCalibration">
+                        <span class="w-3 h-3 rounded bg-[#ff9800] border border-orange-400 shadow-sm border-dashed"></span>尺寸标定框
+                      </div>
+                    </template>
+                    
+                    <!-- 保存结果按钮 -->
+                    <el-button v-if="result.detected_count || materialResult.success" type="success" size="default" class="w-full mt-4 font-bold shadow-md shadow-emerald-500/20" @click="saveRecord">
+                      <el-icon class="mr-1 text-base"><DocumentChecked /></el-icon> 提取并入库
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </template>
+        </el-card>
 
-        <div class="vlm-hint">请上传钢筋表面带有轧制标志（如 4E22）的特写照片</div>
-
-        <el-upload
-          drag
-          :auto-upload="false"
-          :show-file-list="false"
-          accept="image/*"
-          @change="handleFileChange"
-          class="vlm-upload"
-        >
-          <div v-if="imagePreview" class="vlm-preview">
-            <img :src="imagePreview" class="vlm-preview-img" />
-          </div>
-          <div v-else>
-            <el-icon class="el-icon--upload" :size="40"><UploadFilled /></el-icon>
-            <div class="el-upload__text">拖拽或 <em>点击上传</em> 钢筋特写</div>
-          </div>
-        </el-upload>
-
-        <el-button
-          type="primary"
-          size="large"
-          :loading="materialVerifying"
-          :disabled="!imageFile"
-          class="analyze-btn"
-          @click="startMaterialVerify"
-          style="margin-top: 12px"
-        >
-          <el-icon><MagicStick /></el-icon>
-          {{ materialVerifying ? 'AI 识别中...' : '开始智能核验' }}
-        </el-button>
-      </el-card>
-
-      <!-- 原材核验结果 -->
-      <el-card v-if="currentMode === 'material_vlm' && materialResult.success" class="control-card result-card result-pass" :body-style="{ padding: '16px' }">
-        <template #header>
-          <div class="card-header">
-            <el-icon :style="{ color: '#9C27B0' }"><DataAnalysis /></el-icon>
-            <span>轧印识别结果</span>
-          </div>
-        </template>
-
-        <el-descriptions :column="1" border size="small">
-          <el-descriptions-item label="原始轧印">
-            <el-tag type="danger" size="large" effect="dark">{{ materialResult.raw_text }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="钢筋牌号">
-            <span class="desc-value">{{ materialResult.material_grade }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="抗震性能">
-            <el-tag :type="materialResult.is_seismic ? 'success' : 'info'" effect="plain">
-              {{ materialResult.is_seismic ? '✅ 满足抗震要求 (带E)' : '⚠️ 非抗震' }}
-            </el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="公称直径">
-            <span class="desc-value">{{ materialResult.diameter }} mm</span>
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <!-- 开始检测（非 material_vlm） -->
-      <el-button
-        v-if="currentMode !== 'material_vlm'"
-        type="primary"
-        size="large"
-        :loading="isLoading"
-        :disabled="!imageFile"
-        class="analyze-btn"
-        @click="startAnalysis"
-      >
-        <el-icon><Lightning /></el-icon>
-        {{ currentMode === 'column_longitudinal' || currentMode === 'beam_longitudinal' ? '比对' : '检测' }}
-      </el-button>
-
-      <!-- ===== 结果区域 ===== -->
-
-      <!-- 纵筋合规判定 —— 对账单形式（柱+梁） -->
-      <el-card
-        v-if="['column_longitudinal', 'beam_longitudinal'].includes(currentMode) && complianceResult.status"
-        class="result-card"
-        :class="{
-          'result-pass': complianceResult.status === 'PASS',
-          'result-fail': complianceResult.status === 'FAIL',
-          'result-warning': complianceResult.status === 'WARNING'
-        }"
-      >
-        <template #header>
-          <div class="card-header">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>图模比对报告</span>
-          </div>
-        </template>
-
-        <!-- 对账单明细 -->
-        <div class="ledger-table">
-          <div class="ledger-row">
-            <span class="ledger-icon">📐</span>
-            <span class="ledger-label">图纸要求总纵筋</span>
-            <span class="ledger-value">{{ designTotal }} 根</span>
-          </div>
-          <div class="ledger-row">
-            <span class="ledger-icon">📷</span>
-            <span class="ledger-label">现场识别总纵筋</span>
-            <span class="ledger-value">{{ result.detected_count }} 根</span>
-          </div>
-          <div class="ledger-divider"></div>
-          <div class="ledger-row conclusion">
-            <el-icon :size="24">
-              <component :is="complianceResult.status === 'PASS' ? 'CircleCheck' : complianceResult.status === 'FAIL' ? 'CircleClose' : 'Warning'" />
-            </el-icon>
-            <span class="ledger-conclusion-text">
-              {{ complianceResult.status === 'PASS' ? '✅ 图模一致，合规通过'
-                : complianceResult.status === 'FAIL' ? '❌ 图模不一致，存在少筋风险'
-                : '⚠️ 图模不一致，现场多于设计值' }}
-            </span>
-          </div>
-        </div>
-
-        <div class="compliance-message" style="margin-top: 12px">{{ complianceResult.message }}</div>
-      </el-card>
-
-      <!-- 间距检测结果 -->
-      <el-card v-if="['column_stirrup', 'beam_stirrup', 'slab_mesh', 'wall_mesh'].includes(currentMode) && spacingResults.length" class="result-card result-pass">
-        <template #header>
-          <div class="card-header"><el-icon><DataAnalysis /></el-icon><span>间距检测结果</span></div>
-        </template>
-        <div class="result-stats">
-          <div class="stat-item">
-            <div class="stat-value">{{ result.detected_count }}</div>
-            <div class="stat-label">检测数量</div>
-          </div>
-        </div>
-        <div class="spacing-stats">
-          <div class="spacing-stat-row">
-            <span class="spacing-stat-label">间距段数</span>
-            <span class="spacing-stat-value">{{ spacingResults.length }}</span>
-          </div>
-          <div class="spacing-stat-row">
-            <span class="spacing-stat-label" style="color:#00e676">✓ 合格</span>
-            <span class="spacing-stat-value" style="color:#00e676">{{ spacingResults.filter(s => s.status !== 'fail').length }}</span>
-          </div>
-          <div class="spacing-stat-row">
-            <span class="spacing-stat-label" style="color:#ff1744">✗ 不合格</span>
-            <span class="spacing-stat-value" style="color:#ff1744">{{ spacingResults.filter(s => s.status === 'fail').length }}</span>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 通用计数结果 -->
-      <el-card v-if="currentMode === 'material' && result.detected_count" class="result-card result-pass">
-        <template #header>
-          <div class="card-header"><el-icon><DataAnalysis /></el-icon><span>计数/直径检测结果</span></div>
-        </template>
-        <div class="result-stats">
-          <div class="stat-item">
-            <div class="stat-value">{{ result.detected_count }}</div>
-            <div class="stat-label">检测数量</div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-value">{{ avgDiameter }}</div>
-            <div class="stat-label">平均直径 (mm)</div>
-          </div>
-        </div>
-      </el-card>
-
-      <!-- 保存记录 -->
-      <el-button
-        v-if="result.detected_count"
-        type="success"
-        class="save-btn"
-        @click="saveRecord"
-      >
-        <el-icon><Document /></el-icon> 保存记录
-      </el-button>
-    </el-aside>
-
-    <!-- ============ 主内容区 ============ -->
-    <el-main class="main-content">
-      <div class="canvas-header">
-        <h2>
-          <span class="title-dot" :style="{ background: currentModeConfig.color }"></span>
-          {{ currentModeConfig.label }}
-          <el-tag :color="currentModeConfig.color" effect="dark" size="small">
-            {{ backendMode === 'counting' ? 'Counting' : 'Spacing' }}
-          </el-tag>
-        </h2>
-        <el-button text @click="router.push('/')">
-          <el-icon><Back /></el-icon> 返回首页
-        </el-button>
-      </div>
-
-      <div class="canvas-wrapper">
-        <canvas
-          ref="canvasRef"
-          :style="{ cursor: needsCalibration ? 'crosshair' : 'default' }"
-          @mousedown="handleMouseDown"
-          @mousemove="handleMouseMove"
-          @mouseup="handleMouseUp"
-          @mouseleave="handleMouseUp"
-        ></canvas>
-
-        <div v-if="!imgObj" class="canvas-placeholder">
-          <el-icon :size="64"><Picture /></el-icon>
-          <p v-if="currentMode === 'column_longitudinal'">请上传柱截面图片</p>
-          <p v-else-if="currentMode === 'material'">请上传钢筋端面图片</p>
-          <p v-else-if="currentMode === 'material_vlm'">请在左侧上传钢筋轧印特写</p>
-          <p v-else>请上传钢筋侧面/间距图片</p>
-        </div>
-
-        <!-- 标定状态 -->
-        <div class="calibration-badge" v-if="needsCalibration && imgObj">
-          <el-tag
-            :type="calibration.pixelPerMm > 0 ? 'success' : 'warning'"
-            effect="dark"
-          >
-            {{ calibration.pixelPerMm > 0
-              ? `已标定: ${calibration.pixelPerMm.toFixed(2)} px/mm`
-              : '请拖拽画框标定参照物'
-            }}
-          </el-tag>
-        </div>
-
-        <!-- 图例 -->
-        <div class="legend-box" v-if="result.predictions.length">
-          <div class="legend-item"><span class="dot" style="background:#00e676"></span>
-            {{ spacingResults.length
-              ? (['column_stirrup', 'beam_stirrup'].includes(currentMode) ? '非加密区合格' : '合格')
-              : '检测框'
-            }}
-          </div>
-          <div class="legend-item" v-if="spacingResults.length && ['column_stirrup', 'beam_stirrup'].includes(currentMode)">
-            <span class="dot" style="background:#00e5ff"></span>加密区合格
-          </div>
-          <div class="legend-item" v-if="spacingResults.length">
-            <span class="dot" style="background:#ff1744"></span>不合格
-          </div>
-          <div class="legend-item" v-if="needsCalibration">
-            <span class="dot" style="background:#ff9800"></span>参照物
-          </div>
-        </div>
-      </div>
-    </el-main>
+      </el-main>
+    </el-container>
   </el-container>
 </template>
 
+
 <style scoped>
-.workbench-container {
-  height: 100vh;
-  background: #1a1c2c;
+/* 轻量主题 CSS 覆写 */
+
+/* CAD 网格背景底纹 */
+.bg-cad-grid {
+  background-color: #f8fafc;
+  background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+  linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-.sidebar {
-  background: #2d3748;
-  padding: 16px;
-  overflow-y: auto;
+/* 侧边栏菜单样式适配蓝底 */
+.custom-left-menu {
+  border-right: none !important;
 }
 
-/* 模式选择器 */
-.mode-selector-card {
-  border-left: 3px solid #409EFF;
+.menu-item-hover {
+  margin: 4px 12px;
+  border-radius: 8px;
+  height: 44px;
+  line-height: 44px;
+  color: #bfdbfe !important; /* text-blue-200 */
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.mode-select {
-  width: 100%;
+.menu-item-hover :deep(i) {
+  color: #bfdbfe;
 }
 
-.mode-select :deep(.el-input__wrapper) {
-  background-color: #22252b !important;
+.menu-item-hover:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
 }
 
-.mode-option {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 4px 0;
-}
-
-.mode-option-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.mode-option-label {
-  font-size: 14px;
+.menu-item-hover.is-active {
+  background-color: #ffffff !important;
+  color: #2563eb !important; /* text-blue-600 */
   font-weight: 600;
-  color: #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
-.mode-option-desc {
-  font-size: 11px;
-  color: #718096;
-  margin-top: 2px;
+.menu-item-hover.is-active :deep(i) {
+  color: #2563eb !important;
 }
 
-.mode-hint {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
-  padding: 8px 10px;
-  background: rgba(0,0,0,0.2);
-  border-radius: 6px;
+/* 卡片阴影与圆角 */
+.dashboard-card {
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.3s ease;
 }
 
-.mode-hint-text {
-  font-size: 12px;
-  color: #a0aec0;
+.dashboard-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
 }
 
-/* 参数卡片 */
-.param-card {
-  border-left: 3px solid transparent;
+.dashboard-card :deep(.el-card__body) {
+  height: 100%;
 }
 
-.control-card {
-  margin-bottom: 12px;
-  background: #3a4556;
-  border: none;
+/* 按钮点击动效 */
+.el-button {
+  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+}
+.el-button:active {
+  transform: scale(0.96);
 }
 
-.control-card :deep(.el-card__header) {
-  padding: 10px 14px;
-  background: #2d3748;
-  border-bottom: 1px solid #4a5568;
+/* 输入框 Hover / Focus 状态增强 */
+:deep(.el-input-number:hover .el-input__wrapper),
+:deep(.el-input:hover .el-input__wrapper) {
+  box-shadow: 0 0 0 1px #93c5fd inset !important; /* blue-300 */
 }
 
-.control-card :deep(.el-card__body) {
-  padding: 14px;
+:deep(.el-input-number .el-input__wrapper.is-focus),
+:deep(.el-input .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #3b82f6 inset !important; /* blue-500 */
+  background-color: #ffffff !important;
 }
 
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #e2e8f0;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.param-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #cbd5e0;
-  font-size: 13px;
-}
-
-.full-width {
-  width: 100%;
-}
-
-/* 自动计算展示 */
-.auto-calc-box {
-  margin-top: 16px;
-  padding: 14px;
-  background: linear-gradient(135deg, #1a3a2a 0%, #22402d 100%);
-  border-radius: 10px;
-  border: 1px solid #38a169;
-}
-
-.calc-row {
+.form-row-dashboard {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 4px 0;
 }
 
-.calc-label {
-  color: #9ae6b4;
-  font-size: 13px;
+.custom-slider :deep(.el-slider__bar) {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
 }
 
-.calc-value {
-  color: #68d391;
-  font-size: 16px;
-  font-weight: 600;
+.custom-slider :deep(.el-slider__button) {
+  border-color: #8b5cf6;
 }
 
-.calc-op {
-  color: #4a9e6e;
-  font-size: 14px;
-  text-align: center;
+.step-radio-group {
+  background: #f1f5f9;
+  padding: 4px;
+}
+
+.step-radio-group :deep(.el-radio-button__inner) {
+  border: none !important;
+  background: transparent;
+  color: #64748b;
+  font-weight: bold;
+  padding: 8px 24px;
+  border-radius: 6px !important;
+  box-shadow: none !important;
+}
+
+.step-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background: #ffffff !important;
+  color: #2563eb !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
+}
+
+.dashboard-upload {
   width: 100%;
+  height: 100%;
 }
 
-.calc-divider {
-  height: 1px;
-  background: #38a169;
-  margin: 6px 0;
-}
-
-.calc-row.total {
-  padding-top: 6px;
-}
-
-.calc-total {
-  color: #48bb78;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-/* 参数 */
-.param-item {
-  margin-bottom: 12px;
-}
-
-.param-item span {
-  display: block;
-  color: #a0aec0;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.mb-3 { margin-bottom: 12px; }
-
-/* 按钮 */
-.analyze-btn {
+.dashboard-upload :deep(.el-upload) {
   width: 100%;
-  height: 48px;
-  font-size: 16px;
-  margin-bottom: 16px;
-}
-
-.save-btn {
-  width: 100%;
-  margin-bottom: 12px;
-}
-
-/* 结果卡片 */
-.result-card { margin-bottom: 12px; }
-
-.result-pass {
-  background: linear-gradient(135deg, #1a4731 0%, #22543d 100%);
-  border: 1px solid #38a169;
-}
-
-.result-fail {
-  background: linear-gradient(135deg, #5c1127 0%, #822727 100%);
-  border: 2px solid #e53e3e;
-}
-
-.result-warning {
-  background: linear-gradient(135deg, #5c4813 0%, #744210 100%);
-  border: 2px solid #d69e2e;
-}
-
-.result-stats {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 12px;
-}
-
-.stat-item { flex: 1; text-align: center; }
-.stat-value { font-size: 28px; font-weight: 700; color: #68d391; }
-.stat-label { font-size: 11px; color: #9ae6b4; }
-
-.spacing-stats {
-  margin-bottom: 12px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,0.1);
-}
-
-.spacing-stat-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 3px 0;
-  font-size: 13px;
-  color: #e2e8f0;
-}
-
-.spacing-stat-label { font-weight: 500; }
-.spacing-stat-value { font-weight: 700; font-size: 15px; }
-
-/* 合规判定 */
-.compliance-result {
-  text-align: center;
-  padding: 16px 0;
-}
-
-.result-pass .compliance-result { color: #68d391; }
-.result-fail .compliance-result { color: #fc8181; }
-.result-warning .compliance-result { color: #f6e05e; }
-
-.compliance-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  margin-top: 8px;
-}
-
-.compliance-message {
-  font-size: 13px;
-  color: #a0aec0;
-  margin-top: 6px;
-  line-height: 1.5;
-}
-
-/* 主内容区 */
-.main-content {
-  padding: 20px;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }
 
-.canvas-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.canvas-header h2 {
-  margin: 0;
-  color: #e2e8f0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 20px;
-}
-
-.title-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.canvas-wrapper {
-  flex: 1;
-  position: relative;
-  background: #111;
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.canvas-wrapper canvas {
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.canvas-placeholder {
-  color: #4a5568;
-  text-align: center;
-}
-
-.canvas-placeholder p {
-  margin-top: 16px;
-  font-size: 14px;
-}
-
-.calibration-badge {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-}
-
-.legend-box {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  background: rgba(0, 0, 0, 0.85);
-  padding: 12px 16px;
-  border-radius: 8px;
-  border: 1px solid #4a5568;
-}
-
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #e2e8f0;
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.legend-item:last-child { margin-bottom: 0; }
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
-
-/* ===== Step 卡片样式 ===== */
-.step-card {
-  border-left: 3px solid #E040FB;
-}
-
-.cad-upload {
-  width: 100%;
-}
-
-.cad-upload :deep(.el-upload) {
-  width: 100%;
-}
-
-.cad-upload :deep(.el-upload-dragger) {
-  width: 100%;
-  padding: 16px;
-  background: #22252b;
-  border-color: #4a5568;
-}
-
-.cad-preview-box {
-  max-height: 160px;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cad-preview-img {
-  max-width: 100%;
-  max-height: 150px;
-  border-radius: 6px;
-}
-
-.cad-parse-btn {
-  width: 100%;
-  margin-top: 10px;
-}
-
-.cad-hint {
-  margin-top: 10px;
-}
-
-.stirrup-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 8px 12px;
-  background: rgba(64, 158, 255, 0.12);
-  border: 1px solid rgba(64, 158, 255, 0.3);
-  border-radius: 6px;
-  color: #79bbff;
-  font-size: 13px;
-}
-
-/* ===== 对账单样式 ===== */
-.ledger-table {
-  padding: 8px 0;
-}
-
-.ledger-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  margin-bottom: 6px;
-}
-
-.ledger-row:not(.conclusion) {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.ledger-icon {
-  font-size: 20px;
-  flex-shrink: 0;
-}
-
-.ledger-label {
-  flex: 1;
-  color: #cbd5e0;
-  font-size: 14px;
-}
-
-.ledger-value {
-  font-size: 22px;
-  font-weight: 700;
-  color: #e2e8f0;
-  font-variant-numeric: tabular-nums;
-}
-
-.ledger-divider {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.12);
-  margin: 10px 0;
-}
-
-.ledger-row.conclusion {
-  padding: 12px;
-  border-radius: 10px;
-}
-
-.result-pass .ledger-row.conclusion {
-  background: rgba(72, 187, 120, 0.15);
-}
-
-.result-fail .ledger-row.conclusion {
-  background: rgba(229, 62, 62, 0.15);
-}
-
-.result-warning .ledger-row.conclusion {
-  background: rgba(214, 158, 46, 0.15);
-}
-
-.ledger-conclusion-text {
-  font-size: 16px;
-  font-weight: 700;
-  color: #fff;
-}
-.cad-section {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.cad-upload-compact {
-  flex: 1;
-}
-
-.full-width {
-  width: 100%;
-}
-
-.cad-parse-btn-compact {
-  width: 80px;
-}
-
-.compact-hint {
-  font-size: 11px;
-  color: #67C23A;
-  margin-top: 6px;
-  line-height: 1.3;
-}
-
-.compact-hint.error {
-  color: #F56C6C;
-}
-
-.compact-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.form-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 13px;
-  color: #cbd5e0;
-}
-
-.form-row .label {
-  color: #909399;
-}
-
-.form-row.total-row {
-  background: rgba(255, 255, 255, 0.05);
-  padding: 6px 8px;
-  border-radius: 4px;
-  margin-top: 4px;
-}
-
-.form-row.total-row .value {
-  color: #67C23A;
-  font-weight: bold;
-}
-
-.form-row.stirrup-row {
-  color: #409EFF;
-  font-size: 12px;
-}
-
-.ai-tag-row {
-  margin-top: 6px;
-}
-
-.vlm-hint {
-  font-size: 12px;
-  color: #909399;
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(156, 39, 176, 0.08);
-  border-radius: 6px;
-  border-left: 3px solid #9C27B0;
-}
-
-.vlm-upload {
-  width: 100%;
-}
-
-.vlm-preview {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  max-height: 200px;
-  overflow: hidden;
-}
-
-.vlm-preview-img {
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 6px;
-}
-
-.desc-value {
-  font-weight: bold;
-  font-size: 15px;
-  color: #fff;
-}
-
-.ai-fill-hint {
-  margin-bottom: 8px;
-}
-
-/* ===== AI 审图报告面板 ===== */
-.ai-report-card {
-  border-left: 3px solid #E040FB;
-}
-
-.ai-report-card :deep(.el-collapse) {
+.dashboard-upload :deep(.el-upload-dragger) {
+  background: transparent;
   border: none;
-}
-
-.ai-report-card :deep(.el-collapse-item__header) {
-  background: #3a4556;
-  color: #cbd5e0;
-  border-bottom: 1px solid #4a5568;
-  padding: 0 14px;
-  font-size: 13px;
-}
-
-.ai-report-card :deep(.el-collapse-item__wrap) {
-  background: #2d3748;
-  border-bottom: none;
-}
-
-.ai-report-card :deep(.el-collapse-item__content) {
   padding: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
+.dashboard-upload.is-dragover :deep(.el-upload-dragger) {
+  background: rgba(255,255,255,0.8);
+  border: 2px dashed #3b82f6;
+}
+
+/* AI 审图报告特定样式重建 (轻量主题) */
 .ai-report-content {
-  padding: 14px 16px;
   font-size: 13px;
-  line-height: 1.7;
-  color: #cbd5e0;
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-.ai-report-content :deep(h1),
-.ai-report-content :deep(h2),
-.ai-report-content :deep(h3) {
-  color: #e2e8f0;
-  margin: 12px 0 6px;
-  font-size: 15px;
+  line-height: 1.6;
 }
 
 .ai-report-content :deep(h2) {
-  font-size: 14px;
-  border-bottom: 1px solid #4a5568;
+  font-size: 15px;
+  font-weight: bold;
+  color: #334155;
+  margin-top: 12px;
+  margin-bottom: 8px;
   padding-bottom: 4px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .ai-report-content :deep(h3) {
-  font-size: 13px;
-}
-
-.ai-report-content :deep(strong) {
-  color: #f6e05e;
-}
-
-.ai-report-content :deep(ul),
-.ai-report-content :deep(ol) {
-  padding-left: 20px;
-  margin: 6px 0;
-}
-
-.ai-report-content :deep(li) {
-  margin: 3px 0;
-}
-
-.ai-report-content :deep(code) {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 1px 5px;
-  border-radius: 3px;
-  font-size: 12px;
-  color: #68d391;
-}
-
-.ai-report-content :deep(pre) {
-  background: rgba(0, 0, 0, 0.3);
-  padding: 10px;
-  border-radius: 6px;
-  overflow-x: auto;
-  margin: 8px 0;
+  font-size: 14px;
+  font-weight: bold;
+  color: #475569;
+  margin-top: 10px;
+  margin-bottom: 6px;
 }
 
 .ai-report-content :deep(p) {
-  margin: 6px 0;
+  margin-bottom: 8px;
+  color: #64748b;
+}
+
+.ai-report-content :deep(ul) {
+  padding-left: 20px;
+  margin-bottom: 8px;
+  color: #64748b;
+}
+
+.ai-report-content :deep(li) {
+  margin-bottom: 4px;
+}
+
+.ai-report-content :deep(strong) {
+  color: #2563eb;
 }
 </style>

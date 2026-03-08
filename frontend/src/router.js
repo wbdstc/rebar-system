@@ -11,7 +11,7 @@ const routes = [
         path: '/workbench',
         name: 'WorkBench',
         component: () => import('./views/WorkBench.vue'),
-        meta: { title: '平法智能工作台' }
+        meta: { title: '智能审图工作台' }
     },
     {
         path: '/hidden-inspection',
