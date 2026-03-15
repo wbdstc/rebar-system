@@ -8,28 +8,37 @@ const routes = [
         meta: { title: '首页' }
     },
     {
-        path: '/workbench',
-        name: 'WorkBench',
-        component: () => import('./views/WorkBench.vue'),
-        meta: { title: '智能审图工作台' }
-    },
-    {
         path: '/hidden-inspection',
         name: 'HiddenInspection',
-        component: () => import('./views/HiddenInspection.vue'),
+        component: () => import('./views/WorkBench.vue'),
         meta: { title: '隐蔽工程验收' }
     },
     {
-        path: '/inspection',
-        name: 'Inspection',
-        component: () => import('./views/Inspection.vue'),
+        path: '/material-inspection',
+        name: 'MaterialInspection',
+        component: () => import('./views/MaterialInspection.vue'),
         meta: { title: '进场材料验收' }
+    },
+    {
+        path: '/micro-inspection',
+        name: 'MicroInspection',
+        component: () => import('./views/MicroInspection.vue'),
+        meta: { title: '原材微观检测' }
     },
     {
         path: '/records',
         name: 'Records',
         component: () => import('./views/Records.vue'),
-        meta: { title: '检测记录' }
+        meta: { title: '检测数据中心' }
+    },
+    {
+        // 兼容旧路由
+        path: '/workbench',
+        redirect: '/hidden-inspection'
+    },
+    {
+        path: '/inspection',
+        redirect: '/hidden-inspection'
     }
 ]
 

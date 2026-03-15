@@ -19,7 +19,9 @@ const filterType = ref('')
 const typeMap = {
   spacing: { label: '间距检测', type: 'primary' },
   counting: { label: '计数检测', type: 'success' },
-  column: { label: '柱截面检测', type: 'warning' }
+  column: { label: '柱截面检测', type: 'warning' },
+  material: { label: '端面验收', type: '' },
+  material_vlm: { label: '微观识别', type: 'danger' }
 }
 
 // 状态映射
@@ -124,7 +126,7 @@ onMounted(() => {
         <el-button text @click="router.push('/')">
           <el-icon><Back /></el-icon>
         </el-button>
-        <h2 class="text-slate-800 font-bold m-0">检测记录</h2>
+        <h2 class="text-slate-800 font-bold m-0">检测数据中心</h2>
       </div>
       <div class="header-right flex gap-3">
         <el-select v-model="filterType" placeholder="全部类型" clearable @change="handleFilterChange">

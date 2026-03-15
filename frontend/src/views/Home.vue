@@ -50,7 +50,7 @@ onMounted(async () => {
       </div>
 
       <!-- 卡片2: 进场材料验收 -->
-      <div class="card card-blue" @click="navigateTo('/inspection')">
+      <div class="card card-blue" @click="navigateTo('/material-inspection')">
         <div class="icon-circle">
           <svg viewBox="0 0 64 64" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
             <rect x="30" y="8" width="22" height="48" rx="2" fill="none" stroke="#246DFF" stroke-width="4"/>
@@ -62,12 +62,12 @@ onMounted(async () => {
         </div>
         <div class="card-text">
           <h3>进场材料验收</h3>
-          <p>现场实拍进场钢筋端面，秒级 AI 计数与直径估算；支持原材微观核验，智能识别轧印提取牌号与抗震信息。</p>
+          <p>现场实拍进场钢筋端面，AI 秒级智能计数与直径估算；支持参照物标定，精确测量钢筋截面尺寸。</p>
         </div>
       </div>
 
       <!-- 卡片3: 原材微观检测 -->
-      <div class="card card-dark" @click="navigateTo('/workbench')">
+      <div class="card card-dark" @click="navigateTo('/micro-inspection')">
         <div class="icon-circle">
           <svg viewBox="0 0 64 64" width="38" height="38" xmlns="http://www.w3.org/2000/svg">
              <rect x="16" y="28" width="10" height="24" rx="1" fill="#4BA0FF"/>
@@ -79,8 +79,8 @@ onMounted(async () => {
           </svg>
         </div>
         <div class="card-text">
-          <h3>智能审图工作台</h3>
-          <p>AI 解析 CAD 平法图纸自动提取配筋参数，上传现场照片智能比对设计值，一键生成合规验收报告。</p>
+          <h3>原材微观检测</h3>
+          <p>AI 视觉大模型识别钢筋表面轧印标识，自动提取牌号级别、抗震标记（E）及公称直径，无需手工录入。</p>
         </div>
       </div>
 

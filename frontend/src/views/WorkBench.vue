@@ -145,10 +145,7 @@ const pingfaParams = reactive({
   wall: { horizontalSpacing: 200, verticalSpacing: 200 }
 })
 
-// 进场原材参数
-const materialParams = reactive({
-  refLength: 85.6
-})
+
 
 // 通用检测参数
 const detectParams = reactive({
@@ -182,17 +179,7 @@ const complianceResult = reactive({
   message: ''
 })
 
-// =============================================
-// 原材微观核验状态 (material_vlm)
-// =============================================
-const materialVerifying = ref(false)
-const materialResult = reactive({
-  success: false,
-  material_grade: '',
-  is_seismic: false,
-  diameter: 0,
-  raw_text: ''
-})
+
 
 // =============================================
 // CAD 图纸解析状态（Step 1 · 全局）
@@ -248,7 +235,7 @@ const designTotal = computed(() => {
 })
 
 const needsCalibration = computed(() =>
-  ['column_stirrup', 'beam_stirrup', 'slab_mesh', 'wall_mesh', 'material'].includes(currentMode.value)
+  ['column_stirrup', 'beam_stirrup', 'slab_mesh', 'wall_mesh'].includes(currentMode.value)
 )
 
 const avgDiameter = computed(() => {
@@ -290,13 +277,7 @@ const resetAll = () => {
   imagePreview.value = null
   imgObj.value = null
 
-  // 重置原材核验状态
-  materialVerifying.value = false
-  materialResult.success = false
-  materialResult.material_grade = ''
-  materialResult.is_seismic = false
-  materialResult.diameter = 0
-  materialResult.raw_text = ''
+
 
   // 重置 CAD 解析状态
   cadFile.value = null
@@ -479,38 +460,7 @@ const parseCadImage = async () => {
   }
 }
 
-// ---- 原材微观核验 ----
-const startMaterialVerify = async () => {
-  if (!imageFile.value) {
-    ElMessage.warning('请先上传钢筋特写照片')
-    return
-  }
 
-  materialVerifying.value = true
-  materialResult.success = false
-
-  try {
-    const formData = new FormData()
-    formData.append('image', imageFile.value)
-
-    const data = await api.verifyMaterial(formData)
-
-    if (data.success) {
-      materialResult.success = true
-      materialResult.material_grade = data.material_grade || ''
-      materialResult.is_seismic = data.is_seismic || false
-      materialResult.diameter = data.diameter || 0
-      materialResult.raw_text = data.raw_text || ''
-      ElMessage.success('轧印识别成功')
-    } else {
-      ElMessage.error('识别失败: ' + (data.error || '未知错误'))
-    }
-  } catch (error) {
-    ElMessage.error('请求失败: ' + error.message)
-  } finally {
-    materialVerifying.value = false
-  }
-}
 
 // ---- Canvas 拖拽画框标定 ----
 const handleMouseDown = (e) => {
@@ -550,9 +500,7 @@ const handleMouseUp = () => {
 
     if (Math.abs(calibration.refBox.w) > 5) {
       const pxW = Math.abs(calibration.refBox.w)
-      const refLen = currentMode.value === 'material'
-        ? materialParams.refLength
-        : 100 // 默认标定宽度（用户可调整）
+      const refLen = 100 // 默认标定宽度（用户可调整）
       calibration.pixelPerMm = pxW / refLen
       ElMessage.success(`标定完成: ${calibration.pixelPerMm.toFixed(3)} 像素/mm`)
     }
@@ -751,7 +699,7 @@ const saveRecord = async () => {
         </el-button>
       </div>
       <div class="text-[17px] font-bold tracking-wider flex items-center gap-3">
-        <span>智能审图工作台</span>
+        <span>隐蔽工程验收</span>
         <div class="w-1.5 h-1.5 rounded-full bg-white/60"></div>
         <span class="text-blue-100 font-medium">{{ currentModeConfig?.label || 'AI 钢筋智能检测' }}</span>
       </div>
@@ -836,10 +784,7 @@ const saveRecord = async () => {
                     <el-radio-button value="beam_longitudinal">主筋 (计数)</el-radio-button>
                     <el-radio-button value="beam_stirrup">箍筋 (间距)</el-radio-button>
                   </el-radio-group>
-                  <el-radio-group v-else-if="currentMenu === 'material'" v-model="currentMode" size="default">
-                    <el-radio-button value="material">截面计数拉拔</el-radio-button>
-                    <el-radio-button value="material_vlm">AI微观表面识别</el-radio-button>
-                  </el-radio-group>
+
                   <el-tag v-else type="primary" effect="plain" class="border-blue-200">
                     {{ backendMode === 'counting' ? '计数检测' : '间距检测' }}
                   </el-tag>
@@ -943,29 +888,7 @@ const saveRecord = async () => {
                   </div>
                 </template>
 
-                <!-- 原材计数尺寸 -->
-                <template v-else-if="currentMode === 'material'">
-                  <div class="flex flex-col gap-4 w-full">
-                    <div class="flex flex-col gap-2 xl:w-1/2">
-                      <span class="text-slate-500 text-[13px] font-medium">参照物标定宽度 (mm)</span>
-                      <el-input-number v-model="materialParams.refLength" :min="1" :max="500" :step="0.1" :precision="1" class="!w-full" controls-position="right" />
-                    </div>
-                    <div class="text-[13px] text-orange-500 flex items-center gap-2 bg-orange-50 px-4 py-2.5 rounded-lg border border-orange-100">
-                      <el-icon class="text-lg"><InfoFilled /></el-icon> 提示: 请在下方画布框选已知参照物（标准名片/卡牌通常为85.6mm宽）
-                    </div>
-                  </div>
-                </template>
-                
-                <!-- 微观 AI 识别 -->
-                <template v-else-if="currentMode === 'material_vlm'">
-                  <div class="w-full text-sm text-purple-700 bg-purple-50 p-4 rounded-xl border border-purple-100 flex items-start gap-3 shadow-sm">
-                    <el-icon class="mt-0.5 text-xl"><Opportunity /></el-icon>
-                    <div class="leading-relaxed">
-                      <strong class="text-purple-800 text-base">微观标牌语义识别</strong><br/>
-                      <span class="text-purple-600/90">结合大语言与视觉大模型，自动锁定并提取钢筋端面轧制标识（如 4E 22）。无需手工录入参数，自动比对截面直径、牌号级别与抗震要求（E）。</span>
-                    </div>
-                  </div>
-                </template>
+
 
               </div>
             </div>
@@ -989,7 +912,7 @@ const saveRecord = async () => {
                 <el-slider v-model="detectParams.confidence" :min="10" :max="90" class="custom-slider !mb-1" />
               </div>
 
-              <div v-if="cadParseResult.success && !['material', 'material_vlm'].includes(currentMode)" class="mt-3 p-2.5 bg-green-50 rounded-lg border border-green-100 text-[13px] text-green-700 flex items-start gap-1.5 shadow-sm">
+              <div v-if="cadParseResult.success" class="mt-3 p-2.5 bg-green-50 rounded-lg border border-green-100 text-[13px] text-green-700 flex items-start gap-1.5 shadow-sm">
                 <el-icon class="mt-0.5"><CircleCheckFilled /></el-icon>
                 <span class="leading-tight">图纸配筋参数已由 AI 成功解析并导入。</span>
               </div>
@@ -1003,11 +926,11 @@ const saveRecord = async () => {
           <!-- 卡片头部工作流步骤栏 -->
           <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white">
             <el-radio-group ref="tourStep2Ref" v-model="activeStep" size="large" class="step-radio-group shadow-sm rounded-lg overflow-hidden">
-              <el-radio-button value="step1" v-if="!['material', 'material_vlm'].includes(currentMode)">
+              <el-radio-button value="step1">
                 步骤 1: 解析图纸
               </el-radio-button>
               <el-radio-button value="step2">
-                {{ ['material', 'material_vlm'].includes(currentMode) ? '▶ 上传并检测' : '▶ 步骤 2: 现场比对' }}
+                ▶ 步骤 2: 现场比对
               </el-radio-button>
             </el-radio-group>
             
@@ -1016,7 +939,7 @@ const saveRecord = async () => {
               <el-tag v-if="complianceResult.status === 'PASS'" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 图模一致，合规通过</el-tag>
               <el-tag v-else-if="complianceResult.status === 'FAIL'" type="danger" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><Warning /></el-icon> 图模不一致 (存在少筋)</el-tag>
               <el-tag v-else-if="complianceResult.status === 'WARNING'" type="warning" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><Warning /></el-icon> 图模不一致 (现场多筋)</el-tag>
-              <el-tag v-else-if="result.detected_count || materialResult.success" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 检测完成</el-tag>
+              <el-tag v-else-if="result.detected_count" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 检测完成</el-tag>
 
                <el-button
                  v-if="activeStep === 'step1'"
@@ -1036,13 +959,13 @@ const saveRecord = async () => {
                <el-button
                  v-else
                  type="primary"
-                 :loading="isLoading || materialVerifying"
+                 :loading="isLoading"
                  loading-icon="Loading"
                  loading-text="云端大模型计算中..."
                  :disabled="!imageFile"
                  class="px-8 shadow-md !text-sm font-bold tracking-wide"
                  style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); border: none;"
-                 @click="currentMode === 'material_vlm' ? startMaterialVerify() : startAnalysis()"
+                 @click="startAnalysis()"
                >
                  <el-icon class="mr-2"><Lightning /></el-icon>
                  开始验证计算
@@ -1109,18 +1032,13 @@ const saveRecord = async () => {
                       @change="handleFileChange"
                       class="dashboard-upload w-full h-full flex items-center justify-center flex-col bg-white/60 backdrop-blur-sm border-2 border-dashed border-blue-300 rounded-2xl shadow-sm hover:border-blue-500 hover:bg-white/80 transition-all"
                     >
-                      <div v-if="imagePreview && currentMode === 'material_vlm'" class="h-full w-full flex items-center justify-center bg-transparent p-4">
-                          <img :src="imagePreview" class="max-h-full max-w-full rounded-lg shadow-lg" />
-                      </div>
-                      <div v-else class="w-full h-full flex flex-col items-center justify-center py-16">
+                      <div class="w-full h-full flex flex-col items-center justify-center py-16">
                         <div class="w-24 h-24 mb-6 rounded-full bg-blue-50 flex items-center justify-center shadow-inner border border-blue-100">
                            <el-icon :size="48" class="text-blue-500"><Camera /></el-icon>
                         </div>
                         <p class="text-slate-700 font-bold text-xl mb-2">
                           <span v-if="currentMode === 'column_longitudinal'">上传柱截面现场图像</span>
-                          <span v-else-if="currentMode === 'material'">上传进场钢筋端面图</span>
-                          <span v-else-if="currentMode === 'material_vlm'">上传带有轧印面 (如 4E 22) 的特写原图</span>
-                          <span v-else>上传并拖拽施工现场图像</span>
+                          <span v-else>上传施工现场图像</span>
                         </p>
                         <p class="text-slate-500 text-sm font-medium">系统将自动运行 CV 大模型比对合规性，支持快捷键粘贴照片</p>
                       </div>
@@ -1151,28 +1069,16 @@ const saveRecord = async () => {
                   </div>
 
                   <!-- 图例说明箱 -->
-                  <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-w-[180px] z-30 transform transition-all" v-if="(result.predictions && result.predictions.length) || materialResult.success || (complianceResult.status)">
+                  <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-w-[180px] z-30 transform transition-all" v-if="(result.predictions && result.predictions.length) || (complianceResult.status)">
                     <div class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3 tracking-widest uppercase">
                        <el-icon class="mr-1 align-text-bottom"><InfoFilled/></el-icon> 结果与图例
                     </div>
                     
-                    <template v-if="currentMode === 'material_vlm'">
-                       <div class="text-sm">
-                         <div class="flex justify-between mb-2"><span class="text-slate-500">识别牌号</span> <strong class="text-emerald-600 bg-emerald-50 px-2 rounded">{{ materialResult.material_grade }}</strong></div>
-                         <div class="flex justify-between mb-2"><span class="text-slate-500">带E抗震</span> <strong :class="materialResult.is_seismic ? 'text-emerald-600 bg-emerald-50' : 'text-orange-500 bg-orange-50'" class="px-2 rounded">{{ materialResult.is_seismic ? '满足' : '未满足' }}</strong></div>
-                         <div class="flex justify-between"><span class="text-slate-500">公称直径</span> <strong class="text-emerald-600 bg-emerald-50 px-2 rounded">{{ materialResult.diameter }}mm</strong></div>
-                       </div>
-                    </template>
-                    <template v-else>
-                      <!-- Count Stats if Longitudinal or Material -->
-                      <div class="mb-3 border-b border-slate-100 pb-3" v-if="['column_longitudinal', 'beam_longitudinal', 'material'].includes(currentMode)">
+                      <!-- Count Stats if Longitudinal -->
+                      <div class="mb-3 border-b border-slate-100 pb-3" v-if="['column_longitudinal', 'beam_longitudinal'].includes(currentMode)">
                          <div class="flex justify-between items-center text-sm mb-1">
                            <span class="text-slate-500">检测件数</span>
                            <span class="font-black text-emerald-600 text-lg tabular-nums">{{ result.detected_count }}</span>
-                         </div>
-                         <div class="flex justify-between items-center text-sm" v-if="currentMode === 'material'">
-                           <span class="text-slate-500">平均直径</span>
-                           <span class="font-bold text-slate-800 tabular-nums">{{ avgDiameter }} mm</span>
                          </div>
                       </div>
                       
@@ -1190,10 +1096,9 @@ const saveRecord = async () => {
                       <div class="flex items-center gap-2 text-xs text-slate-600 font-medium" v-if="needsCalibration">
                         <span class="w-3 h-3 rounded bg-[#ff9800] border border-orange-400 shadow-sm border-dashed"></span>尺寸标定框
                       </div>
-                    </template>
                     
                     <!-- 保存结果按钮 -->
-                    <el-button v-if="result.detected_count || materialResult.success" type="success" size="default" class="w-full mt-4 font-bold shadow-md shadow-emerald-500/20" @click="saveRecord">
+                    <el-button v-if="result.detected_count" type="success" size="default" class="w-full mt-4 font-bold shadow-md shadow-emerald-500/20" @click="saveRecord">
                       <el-icon class="mr-1 text-base"><DocumentChecked /></el-icon> 提取并入库
                     </el-button>
                   </div>
@@ -1210,101 +1115,15 @@ const saveRecord = async () => {
 
 
 <style scoped>
-/* 轻量主题 CSS 覆写 */
+@reference "../style.css";
 
-/* CAD 网格背景底纹 */
-.bg-cad-grid {
-  background-color: #f8fafc;
-  background-image: linear-gradient(rgba(59, 130, 246, 0.05) 1px, transparent 1px),
-  linear-gradient(90deg, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-/* 侧边栏菜单样式适配蓝底 */
-.custom-left-menu {
-  border-right: none !important;
-}
-
-.menu-item-hover {
-  margin: 4px 12px;
-  border-radius: 8px;
-  height: 44px;
-  line-height: 44px;
-  color: #bfdbfe !important; /* text-blue-200 */
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.menu-item-hover :deep(i) {
-  color: #bfdbfe;
-}
-
-.menu-item-hover:hover {
-  background-color: rgba(255, 255, 255, 0.1) !important;
-  color: #ffffff !important;
-}
-
-.menu-item-hover.is-active {
-  background-color: #ffffff !important;
-  color: #2563eb !important; /* text-blue-600 */
-  font-weight: 600;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.menu-item-hover.is-active :deep(i) {
-  color: #2563eb !important;
-}
-
-/* 卡片阴影与圆角 */
-.dashboard-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  background-color: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03);
-  transition: box-shadow 0.3s ease;
-}
-
-.dashboard-card:hover {
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
-}
-
-.dashboard-card :deep(.el-card__body) {
-  height: 100%;
-}
-
-/* 按钮点击动效 */
-.el-button {
-  transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
-}
-.el-button:active {
-  transform: scale(0.96);
-}
-
-/* 输入框 Hover / Focus 状态增强 */
-:deep(.el-input-number:hover .el-input__wrapper),
-:deep(.el-input:hover .el-input__wrapper) {
-  box-shadow: 0 0 0 1px #93c5fd inset !important; /* blue-300 */
-}
-
-:deep(.el-input-number .el-input__wrapper.is-focus),
-:deep(.el-input .el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #3b82f6 inset !important; /* blue-500 */
-  background-color: #ffffff !important;
-}
+/* WorkBench-specific styles only */
 
 .form-row-dashboard {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 4px 0;
-}
-
-.custom-slider :deep(.el-slider__bar) {
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-}
-
-.custom-slider :deep(.el-slider__button) {
-  border-color: #8b5cf6;
 }
 
 .step-radio-group {
@@ -1328,37 +1147,7 @@ const saveRecord = async () => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.05) !important;
 }
 
-.dashboard-upload {
-  width: 100%;
-  height: 100%;
-}
-
-.dashboard-upload :deep(.el-upload) {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.dashboard-upload :deep(.el-upload-dragger) {
-  background: transparent;
-  border: none;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 16px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.dashboard-upload.is-dragover :deep(.el-upload-dragger) {
-  background: rgba(255,255,255,0.8);
-  border: 2px dashed #3b82f6;
-}
-
-/* AI 审图报告特定样式重建 (轻量主题) */
+/* AI 审图报告样式 */
 .ai-report-content {
   font-size: 13px;
   line-height: 1.6;
