@@ -690,9 +690,9 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <el-container class="h-screen bg-slate-50 text-slate-800 relative flex flex-col overflow-hidden">
+  <el-container class="inspection-container h-screen text-slate-800 relative flex flex-col overflow-hidden">
     <!-- 顶部导航栏 (工程蓝底色) -->
-    <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600 text-white shadow-md h-14 shrink-0">
+    <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600/80 backdrop-blur-md text-white shadow-md h-14 shrink-0 border-b border-blue-500/30">
       <div class="flex items-center gap-4">
         <el-button text class="!text-white hover:!bg-white/10" @click="router.push('/')">
           <el-icon class="mr-1 text-lg"><Back /></el-icon> 返回首页
@@ -710,9 +710,9 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="relative z-10 overflow-hidden flex-1">
+    <el-container class="relative z-10 overflow-hidden flex-1 p-6 gap-6">
       <!-- 左侧导航栏 -->
-      <el-aside width="200px" class="bg-blue-600 border-r border-blue-700 shadow-lg flex flex-col z-20">
+      <el-aside width="200px" class="bg-blue-600/80 backdrop-blur-xl rounded-2xl border border-blue-500/30 shadow-xl flex flex-col z-20 overflow-hidden">
         <div class="p-4 border-b border-blue-500/30 flex items-center gap-2 text-blue-100 text-xs font-bold uppercase tracking-wider">
           <el-icon><Menu /></el-icon> 验收模块
         </div>
@@ -762,9 +762,9 @@ const saveRecord = async () => {
       </el-tour>
 
       <!-- 主工作区 -->
-      <el-main class="bg-cad-grid p-6 flex flex-col gap-5 overflow-y-auto w-full">
+      <el-main class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 flex flex-col gap-5 overflow-y-auto w-full relative">
         <!-- 顶部：参数配置卡片 -->
-        <el-card ref="tourStep1Ref" class="dashboard-card shrink-0 shadow-sm border-slate-200 mb-5" :body-style="{ padding: '16px 24px' }">
+        <el-card ref="tourStep1Ref" class="dashboard-card shrink-0 shadow-sm border-white/40 bg-white/50 backdrop-blur-md mb-5" :body-style="{ padding: '16px 24px' }">
           <div class="flex flex-col xl:flex-row gap-8 items-start xl:items-center">
             
             <!-- 平法参数 (Left side) -->
@@ -1116,6 +1116,17 @@ const saveRecord = async () => {
 
 <style scoped>
 @reference "../style.css";
+
+.inspection-container {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(100, 160, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(60, 120, 255, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #E2EDFA 0%, #EDF3FC 30%, #F5F8FF 60%, #FFFFFF 100%);
+  background-image: url('../assets/11.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 
 /* WorkBench-specific styles only */
 

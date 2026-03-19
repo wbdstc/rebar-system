@@ -238,9 +238,9 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <el-container class="h-screen bg-slate-50 text-slate-800 relative flex flex-col overflow-hidden">
+  <el-container class="inspection-container h-screen text-slate-800 relative flex flex-col overflow-hidden">
     <!-- 顶部导航栏 -->
-    <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600 text-white shadow-md h-14 shrink-0">
+    <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600/80 backdrop-blur-md text-white shadow-md h-14 shrink-0 border-b border-blue-500/30">
       <div class="flex items-center gap-4">
         <el-button text class="!text-white hover:!bg-white/10" @click="router.push('/')">
           <el-icon class="mr-1 text-lg"><Back /></el-icon> 返回首页
@@ -258,9 +258,9 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="relative z-10 overflow-hidden flex-1">
+    <el-container class="relative z-10 overflow-hidden flex-1 p-6 gap-6">
       <!-- 左侧参数面板 -->
-      <el-aside width="300px" class="bg-white border-r border-slate-200 shadow-sm flex flex-col z-20 overflow-y-auto">
+      <el-aside width="320px" class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 flex flex-col z-20 overflow-y-auto">
         <div class="p-4 border-b border-slate-100 flex items-center gap-2 text-slate-800 text-sm font-bold">
           <el-icon class="text-blue-500"><Setting /></el-icon> 检测参数配置
         </div>
@@ -320,9 +320,9 @@ const saveRecord = async () => {
       </el-aside>
 
       <!-- 主工作区 -->
-      <el-main class="bg-cad-grid p-0 flex flex-col overflow-hidden w-full">
+      <el-main class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
         <!-- 顶部操作栏 -->
-        <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white">
+        <div class="px-5 py-3 border-b border-white/40 flex justify-between items-center shrink-0 bg-white/50">
           <div class="text-slate-700 font-bold flex items-center gap-2">
             <el-icon class="text-blue-500"><Picture /></el-icon> 进场钢筋端面检测
           </div>
@@ -346,7 +346,7 @@ const saveRecord = async () => {
         </div>
 
         <!-- 画布内容 -->
-        <div class="flex-1 relative overflow-hidden flex min-h-[400px]" style="background-color: #eaeff5; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px;">
+        <div class="flex-1 relative overflow-hidden flex min-h-[400px] bg-slate-50/50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
           <!-- Upload Overlay -->
           <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
             <div class="w-full max-w-3xl h-full max-h-[400px]">
@@ -418,6 +418,17 @@ const saveRecord = async () => {
 
 <style scoped>
 @reference "../style.css";
+
+.inspection-container {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(100, 160, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(60, 120, 255, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #E2EDFA 0%, #EDF3FC 30%, #F5F8FF 60%, #FFFFFF 100%);
+  background-image: url('../assets/11.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
 
 :deep(.el-input-number.is-controls-right .el-input__wrapper) {
   background-color: white !important;
