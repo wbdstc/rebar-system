@@ -258,20 +258,20 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="relative z-10 overflow-hidden flex-1 p-6 gap-6">
+    <el-container class="material-shell relative z-10 overflow-hidden flex-1 p-4 md:p-6 gap-4 md:gap-6">
       <!-- 左侧参数面板 -->
-      <el-aside width="320px" class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 flex flex-col z-20 overflow-y-auto">
+      <el-aside width="320px" class="material-aside bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 flex flex-col z-20 overflow-y-auto">
         <div class="p-4 border-b border-slate-100 flex items-center gap-2 text-slate-800 text-sm font-bold">
           <el-icon class="text-blue-500"><Setting /></el-icon> 检测参数配置
         </div>
 
-        <div class="p-4 flex flex-col gap-5">
+        <div class="material-aside-body p-4 flex flex-col gap-4">
           <!-- 参照物标定 -->
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center gap-2 text-slate-700 font-bold text-sm">
+          <div class="aside-section flex flex-col gap-3">
+            <div class="aside-section-header flex items-center gap-2 text-slate-700 font-bold text-sm">
               <el-icon class="text-orange-500"><Aim /></el-icon> 参照物标定
             </div>
-            <div class="bg-orange-50/80 border border-orange-100 rounded-xl p-3">
+            <div class="bg-orange-50/80 border border-orange-100 rounded-xl p-4">
               <span class="text-slate-500 text-[13px] font-medium block mb-2">参照物已知宽度 (mm)</span>
               <el-input-number v-model="materialParams.refLength" :min="1" :max="500" :step="0.1" :precision="1" class="!w-full" controls-position="right" />
               <div class="text-[12px] text-orange-500 flex items-center gap-1.5 mt-2">
@@ -284,11 +284,11 @@ const saveRecord = async () => {
           </div>
 
           <!-- AI 置信度 -->
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center gap-2 text-slate-700 font-bold text-sm">
+          <div class="aside-section flex flex-col gap-3">
+            <div class="aside-section-header flex items-center gap-2 text-slate-700 font-bold text-sm">
               <el-icon class="text-indigo-500"><Cpu /></el-icon> AI 检测参数
             </div>
-            <div class="bg-indigo-50/50 p-3 rounded-xl border border-indigo-100">
+            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
               <div class="flex justify-between items-center text-[13px] text-slate-600 mb-2">
                 <span class="font-medium">置信度阈值</span>
                 <span class="font-black text-indigo-600 text-lg tabular-nums leading-none">≥ {{ detectParams.confidence }}<span class="text-xs font-normal text-indigo-400 ml-0.5">%</span></span>
@@ -298,8 +298,8 @@ const saveRecord = async () => {
           </div>
 
           <!-- 检测结果摘要 -->
-          <div v-if="result.detected_count" class="flex flex-col gap-3">
-            <div class="flex items-center gap-2 text-slate-700 font-bold text-sm">
+          <div v-if="result.detected_count" class="aside-section flex flex-col gap-3">
+            <div class="aside-section-header flex items-center gap-2 text-slate-700 font-bold text-sm">
               <el-icon class="text-emerald-500"><DataAnalysis /></el-icon> 检测结果
             </div>
             <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
@@ -320,13 +320,13 @@ const saveRecord = async () => {
       </el-aside>
 
       <!-- 主工作区 -->
-      <el-main class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
+      <el-main class="material-main bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
         <!-- 顶部操作栏 -->
-        <div class="px-5 py-3 border-b border-white/40 flex justify-between items-center shrink-0 bg-white/50">
+        <div class="material-toolbar px-4 md:px-5 py-4 border-b border-white/40 shrink-0 bg-white/50">
           <div class="text-slate-700 font-bold flex items-center gap-2">
             <el-icon class="text-blue-500"><Picture /></el-icon> 进场钢筋端面检测
           </div>
-          <div class="flex items-center gap-4">
+          <div class="material-toolbar-actions flex items-center gap-3 md:gap-4">
             <el-tag v-if="result.detected_count" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0">
               <el-icon class="mr-1"><CircleCheckFilled /></el-icon> 检测完成
             </el-tag>
@@ -346,9 +346,9 @@ const saveRecord = async () => {
         </div>
 
         <!-- 画布内容 -->
-        <div class="flex-1 relative overflow-hidden flex min-h-[400px] bg-slate-50/50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
+        <div class="material-stage flex-1 relative overflow-hidden flex min-h-[400px] bg-slate-50/50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
           <!-- Upload Overlay -->
-          <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
+          <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
             <div class="w-full max-w-3xl h-full max-h-[400px]">
               <el-upload
                 drag
@@ -371,7 +371,7 @@ const saveRecord = async () => {
           </div>
 
           <!-- Canvas Area -->
-          <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 z-20 overflow-auto">
+          <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
             <canvas
               ref="canvasRef"
               class="rounded shadow-xl bg-white max-w-full"
@@ -383,7 +383,7 @@ const saveRecord = async () => {
             ></canvas>
 
             <!-- 重新上传按钮 -->
-            <div class="absolute top-6 left-6 flex gap-2 z-30">
+            <div class="material-floating-action absolute top-4 md:top-6 left-4 md:left-6 flex gap-2 z-30">
               <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
                 <el-button size="default" class="shadow-md bg-white text-slate-700 hover:text-blue-500 border-0">
                   <el-icon class="mr-1 font-bold text-lg"><RefreshRight /></el-icon> 重新上传
@@ -392,13 +392,13 @@ const saveRecord = async () => {
             </div>
 
             <!-- 标定提示 -->
-            <div class="absolute top-6 right-6 bg-black/60 backdrop-blur border border-white/20 px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2" v-if="calibration.pixelPerMm === 0">
+            <div class="material-calibration-tip absolute top-4 md:top-6 right-4 md:right-6 bg-black/60 backdrop-blur border border-white/20 px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-2" v-if="calibration.pixelPerMm === 0">
               <span class="w-3 h-3 rounded-full bg-orange-500 animate-pulse"></span>
               <span class="text-orange-300 text-xs font-medium">请在画面中框选已知宽度参照物</span>
             </div>
 
             <!-- 图例 -->
-            <div class="absolute bottom-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-xl shadow-lg min-w-[160px] z-30" v-if="result.predictions.length">
+            <div class="material-legend absolute bottom-4 md:bottom-6 right-4 md:right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-3 rounded-xl shadow-lg min-w-[160px] z-30" v-if="result.predictions.length">
               <div class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-2 mb-2 tracking-widest uppercase">
                 <el-icon class="mr-1 align-text-bottom"><InfoFilled /></el-icon> 图例
               </div>
@@ -428,6 +428,115 @@ const saveRecord = async () => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.material-aside {
+  width: 368px !important;
+  flex: 0 0 368px;
+}
+
+.material-aside-body {
+  gap: 16px;
+}
+
+.aside-section {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.aside-section-header {
+  margin-bottom: 2px;
+}
+
+.material-main {
+  min-width: 0;
+}
+
+.material-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.material-toolbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.material-stage {
+  min-height: 520px;
+}
+
+.result-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.result-stat-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.material-floating-action,
+.material-calibration-tip,
+.material-legend {
+  max-width: calc(100% - 32px);
+}
+
+@media (max-width: 1024px) {
+  .material-shell {
+    flex-direction: column;
+  }
+
+  .material-aside {
+    width: 100% !important;
+    flex: none;
+  }
+
+  .aside-section {
+    padding: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .material-floating-action,
+  .material-calibration-tip,
+  .material-legend {
+    left: 16px !important;
+    right: 16px !important;
+  }
+
+  .material-floating-action {
+    top: 16px !important;
+  }
+
+  .material-calibration-tip {
+    top: 72px !important;
+  }
+
+  .material-legend {
+    bottom: 16px !important;
+    max-width: none;
+  }
+
+  .material-floating-action :deep(.el-upload) {
+    width: 100%;
+  }
+
+  .material-floating-action :deep(.el-button) {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 :deep(.el-input-number.is-controls-right .el-input__wrapper) {

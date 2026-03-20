@@ -128,19 +128,19 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="relative z-10 overflow-hidden flex-1 p-6 gap-6">
+    <el-container class="micro-shell relative z-10 overflow-hidden flex-1 p-4 md:p-6 gap-4 md:gap-6">
       <!-- 主内容区 -->
-      <el-main class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
-        <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+      <el-main class="micro-main bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
+        <div class="micro-layout flex-1 flex flex-col lg:flex-row overflow-hidden">
 
           <!-- 左侧：上传区 -->
           <div class="flex-1 flex flex-col overflow-hidden bg-slate-50/50" style="background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 24px 24px;">
             <!-- 操作栏 -->
-            <div class="px-5 py-3 border-b border-white/40 flex justify-between items-center shrink-0 bg-white/50">
+            <div class="micro-toolbar px-4 md:px-5 py-4 border-b border-white/40 shrink-0 bg-white/50">
               <div class="text-slate-700 font-bold flex items-center gap-2">
                 <el-icon class="text-purple-500"><View /></el-icon> 钢筋轧印特写上传
               </div>
-              <div class="flex items-center gap-3">
+              <div class="micro-toolbar-actions flex items-center gap-3">
                 <el-button v-if="imagePreview" text type="danger" @click="resetAll">
                   <el-icon class="mr-1"><Delete /></el-icon> 清除
                 </el-button>
@@ -160,7 +160,7 @@ const saveRecord = async () => {
             </div>
 
             <!-- 图片区 -->
-            <div class="flex-1 relative overflow-hidden flex items-center justify-center p-6">
+            <div class="micro-stage flex-1 relative overflow-hidden flex items-center justify-center p-4 md:p-6">
               <!-- 上传空状态 -->
               <div v-if="!imagePreview" class="w-full max-w-2xl h-full max-h-[500px]">
                 <el-upload
@@ -188,7 +188,7 @@ const saveRecord = async () => {
               <div v-else class="relative max-w-full max-h-full">
                 <img :src="imagePreview" class="max-h-[calc(100vh-200px)] max-w-full rounded-2xl shadow-2xl object-contain" />
                 <!-- 重新上传 -->
-                <div class="absolute top-4 left-4 z-30">
+                <div class="micro-floating-action absolute top-4 left-4 z-30">
                   <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
                     <el-button size="default" class="shadow-md bg-white text-slate-700 hover:text-purple-500 border-0">
                       <el-icon class="mr-1 font-bold text-lg"><RefreshRight /></el-icon> 重新上传
@@ -200,7 +200,7 @@ const saveRecord = async () => {
           </div>
 
           <!-- 右侧：结果面板 -->
-          <div class="w-full lg:w-[400px] bg-white/50 backdrop-blur-md border-l border-white/40 flex flex-col shrink-0 overflow-y-auto">
+          <div class="micro-results w-full lg:w-[400px] bg-white/50 backdrop-blur-md border-l border-white/40 flex flex-col shrink-0 overflow-y-auto">
             <!-- 面板头 -->
             <div class="p-4 border-b border-white/40 bg-white/30 shrink-0">
               <div class="font-bold flex items-center gap-2 text-slate-800">
@@ -292,5 +292,57 @@ const saveRecord = async () => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.micro-main {
+  min-width: 0;
+}
+
+.micro-layout {
+  min-height: 0;
+}
+
+.micro-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.micro-toolbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.micro-stage {
+  min-height: 520px;
+}
+
+.micro-results {
+  min-width: 0;
+}
+
+@media (max-width: 1024px) {
+  .micro-results {
+    border-left: none !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.4);
+  }
+}
+
+@media (max-width: 768px) {
+  .micro-floating-action {
+    left: 16px !important;
+    right: 16px;
+  }
+
+  .micro-floating-action :deep(.el-upload) {
+    width: 100%;
+  }
+
+  .micro-floating-action :deep(.el-button) {
+    width: 100%;
+    justify-content: center;
+  }
 }
 </style>

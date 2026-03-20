@@ -140,7 +140,8 @@ onMounted(() => {
       </div>
     </el-header>
 
-    <el-main class="p-6 relative z-10">
+    <el-main class="records-main p-4 md:p-6 relative z-10">
+      <div class="records-card">
       <el-table :data="records" v-loading="loading" stripe style="width: 100%" class="custom-table">
         <el-table-column prop="record_id" label="记录编号" width="180" />
         <el-table-column prop="inspection_type" label="检测类型" width="120">
@@ -196,6 +197,7 @@ onMounted(() => {
 
       <!-- 空状态 -->
       <el-empty v-if="!loading && records.length === 0" description="暂无检测记录" />
+      </div>
     </el-main>
   </el-container>
 </template>
@@ -209,6 +211,26 @@ onMounted(() => {
 
 .page-header {
   @apply flex justify-between items-center px-6;
+  min-height: 64px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.header-right {
+  flex-wrap: wrap;
+}
+
+.records-main {
+  min-width: 0;
+}
+
+.records-card {
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 24px;
+  padding: 16px;
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
 }
 
 .custom-table {
@@ -242,5 +264,26 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   margin-top: 24px;
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    padding: 16px;
+    align-items: stretch;
+  }
+
+  .header-left,
+  .header-right {
+    width: 100%;
+  }
+
+  .header-right :deep(.el-select) {
+    width: 100%;
+  }
+
+  .records-card {
+    padding: 12px;
+    border-radius: 18px;
+  }
 }
 </style>

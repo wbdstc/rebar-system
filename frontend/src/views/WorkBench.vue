@@ -710,9 +710,9 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="relative z-10 overflow-hidden flex-1 p-6 gap-6">
+    <el-container class="workbench-shell relative z-10 overflow-hidden flex-1 p-4 md:p-6 gap-4 md:gap-6">
       <!-- 左侧导航栏 -->
-      <el-aside width="200px" class="bg-blue-600/80 backdrop-blur-xl rounded-2xl border border-blue-500/30 shadow-xl flex flex-col z-20 overflow-hidden">
+      <el-aside width="200px" class="workbench-aside bg-blue-600/80 backdrop-blur-xl rounded-2xl border border-blue-500/30 shadow-xl flex flex-col z-20 overflow-hidden">
         <div class="p-4 border-b border-blue-500/30 flex items-center gap-2 text-blue-100 text-xs font-bold uppercase tracking-wider">
           <el-icon><Menu /></el-icon> 验收模块
         </div>
@@ -762,20 +762,20 @@ const saveRecord = async () => {
       </el-tour>
 
       <!-- 主工作区 -->
-      <el-main class="bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-6 flex flex-col gap-5 overflow-y-auto w-full relative">
+      <el-main class="workbench-main bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-4 md:p-6 flex flex-col gap-4 md:gap-6 overflow-y-auto w-full relative">
         <!-- 顶部：参数配置卡片 -->
-        <el-card ref="tourStep1Ref" class="dashboard-card shrink-0 shadow-sm border-white/40 bg-white/50 backdrop-blur-md mb-5" :body-style="{ padding: '16px 24px' }">
-          <div class="flex flex-col xl:flex-row gap-8 items-start xl:items-center">
+        <el-card ref="tourStep1Ref" class="dashboard-card shrink-0 shadow-sm border-white/40 bg-white/50 backdrop-blur-md" :body-style="{ padding: '20px 24px' }">
+          <div class="config-layout">
             
             <!-- 平法参数 (Left side) -->
-            <div class="flex-1 xl:border-r border-slate-200 xl:pr-8 flex flex-col justify-center">
+            <div class="config-main">
               
-              <div class="flex items-center gap-6 mb-4">
-                <div class="flex items-center gap-2 text-slate-800 font-bold text-base whitespace-nowrap">
+              <div class="config-header">
+                <div class="config-title flex items-center gap-2 text-slate-800 font-bold text-base whitespace-nowrap">
                   <el-icon class="text-blue-500"><EditPen /></el-icon> 📝 检测参数与要求
                 </div>
                 <!-- 检测子模式切换器 (Radio) -->
-                <div class="flex-1">
+                <div class="config-mode-switch">
                   <el-radio-group v-if="currentMenu === 'column'" v-model="currentMode" size="default">
                     <el-radio-button value="column_longitudinal">纵筋 (计数)</el-radio-button>
                     <el-radio-button value="column_stirrup">箍筋 (间距)</el-radio-button>
@@ -792,11 +792,11 @@ const saveRecord = async () => {
               </div>
 
               <!-- 动态表单 -->
-              <div class="bg-slate-50/50 border border-slate-100 rounded-xl p-4 w-full">
+              <div class="config-panel bg-slate-50/50 border border-slate-100 rounded-2xl p-4 md:p-5 w-full">
                 
                 <!-- 柱纵筋 -->
                 <template v-if="currentMode === 'column_longitudinal'">
-                  <div class="grid grid-cols-2 gap-5 w-full xl:w-4/5">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-5 w-full xl:w-4/5">
                     <div class="flex flex-col gap-2">
                       <span class="text-slate-500 text-[13px] font-medium">角筋数量 (根)</span>
                       <el-input-number v-model="pingfaParams.column.corner" :min="4" :max="20" :step="2" class="!w-full" controls-position="right" />
@@ -806,7 +806,7 @@ const saveRecord = async () => {
                       <el-input-number v-model="pingfaParams.column.middle" :min="0" :max="30" :step="1" class="!w-full" controls-position="right" />
                     </div>
                   </div>
-                  <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between w-full xl:w-4/5">
+                  <div class="summary-strip mt-4 pt-4 border-t border-slate-200 flex items-center justify-between w-full xl:w-4/5">
                     <span class="text-slate-600 text-sm font-bold">设计总数预估</span>
                     <div class="text-emerald-500 text-3xl font-black tabular-nums">{{ designTotal }}</div>
                   </div>
@@ -828,7 +828,7 @@ const saveRecord = async () => {
                       <el-input-number v-model="pingfaParams.beam.waist" :min="0" :max="20" :step="1" class="!w-full" controls-position="right" />
                     </div>
                   </div>
-                  <div class="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between w-full">
+                  <div class="summary-strip mt-4 pt-4 border-t border-slate-200 flex items-center justify-between w-full">
                     <span class="text-slate-600 text-sm font-bold">设计总数预估</span>
                     <div class="text-emerald-500 text-3xl font-black tabular-nums">{{ designTotal }}</div>
                   </div>
@@ -894,8 +894,8 @@ const saveRecord = async () => {
             </div>
 
             <!-- AI Params (Right side) -->
-            <div class="w-full xl:w-96 shrink-0 flex flex-col justify-center">
-              <div class="flex items-center justify-between mb-4">
+            <div class="config-side">
+              <div class="flex items-center justify-between gap-3 mb-4">
                 <div class="flex items-center gap-2 text-slate-800 font-bold text-base">
                   <el-icon class="text-indigo-500"><Setting /></el-icon> 🤖 AI 检测控制中心
                 </div>
@@ -904,7 +904,7 @@ const saveRecord = async () => {
                 </el-tag>
               </div>
 
-              <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+              <div class="control-card bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
                 <div class="flex justify-between items-center text-[13px] text-slate-600 mb-2">
                   <span class="font-medium">计算机视觉模型置信度阈值</span>
                   <span class="font-black text-indigo-600 text-lg tabular-nums leading-none"><span class="text-sm">≥</span> {{ detectParams.confidence }}<span class="text-xs font-normal text-indigo-400 ml-0.5">%</span></span>
@@ -912,7 +912,7 @@ const saveRecord = async () => {
                 <el-slider v-model="detectParams.confidence" :min="10" :max="90" class="custom-slider !mb-1" />
               </div>
 
-              <div v-if="cadParseResult.success" class="mt-3 p-2.5 bg-green-50 rounded-lg border border-green-100 text-[13px] text-green-700 flex items-start gap-1.5 shadow-sm">
+              <div v-if="cadParseResult.success" class="mt-3 p-3 bg-green-50 rounded-xl border border-green-100 text-[13px] text-green-700 flex items-start gap-1.5 shadow-sm">
                 <el-icon class="mt-0.5"><CircleCheckFilled /></el-icon>
                 <span class="leading-tight">图纸配筋参数已由 AI 成功解析并导入。</span>
               </div>
@@ -924,7 +924,7 @@ const saveRecord = async () => {
         <el-card class="dashboard-card flex-1 flex flex-col min-h-[400px] shadow-sm border-slate-200" :body-style="{ padding: '0', display: 'flex', flexDirection: 'column', height: '100%' }">
           
           <!-- 卡片头部工作流步骤栏 -->
-          <div class="px-5 py-3 border-b border-slate-100 flex justify-between items-center shrink-0 bg-white">
+          <div class="workspace-toolbar px-4 md:px-5 py-4 border-b border-slate-100 shrink-0 bg-white">
             <el-radio-group ref="tourStep2Ref" v-model="activeStep" size="large" class="step-radio-group shadow-sm rounded-lg overflow-hidden">
               <el-radio-button value="step1">
                 步骤 1: 解析图纸
@@ -934,7 +934,7 @@ const saveRecord = async () => {
               </el-radio-button>
             </el-radio-group>
             
-            <div class="flex items-center gap-4">
+            <div class="workspace-toolbar-actions flex items-center gap-3 md:gap-4">
               <!-- Result / State Badges -->
               <el-tag v-if="complianceResult.status === 'PASS'" type="success" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><CircleCheckFilled /></el-icon> 图模一致，合规通过</el-tag>
               <el-tag v-else-if="complianceResult.status === 'FAIL'" type="danger" effect="dark" size="default" class="mr-2 px-4 shadow-sm border-0"><el-icon class="mr-1"><Warning /></el-icon> 图模不一致 (存在少筋)</el-tag>
@@ -974,12 +974,12 @@ const saveRecord = async () => {
           </div>
 
           <!-- 卡片内容体：CAD或现场上传工作区 -->
-          <div ref="tourStep3Ref" class="flex-1 relative bg-cad-grid overflow-hidden flex min-h-[400px]">
+          <div ref="tourStep3Ref" class="workspace-stage flex-1 relative bg-cad-grid overflow-hidden flex min-h-[400px]">
             
             <!-- Step 1 View: CAD Upload & Report -->
-            <div v-show="activeStep === 'step1'" class="absolute inset-0 flex">
+            <div v-show="activeStep === 'step1'" class="absolute inset-0 step-pane step-pane-split">
               <!-- 右侧或中心的图纸上传区 -->
-              <div class="flex-1 p-6 flex flex-col h-full items-center justify-center border-r border-slate-200 overflow-y-auto">
+              <div class="step-content-pane flex-1 p-4 md:p-6 flex flex-col h-full items-center justify-center border-r border-slate-200 overflow-y-auto">
                 <div class="w-full max-w-2xl h-full flex flex-col items-center justify-center">
                   <el-upload
                     drag
@@ -1003,7 +1003,7 @@ const saveRecord = async () => {
               </div>
               
               <!-- CAD 解析报告区 -->
-              <div class="w-96 bg-white flex flex-col h-full border-l border-slate-200 shrink-0">
+              <div class="report-pane bg-white flex flex-col h-full border-l border-slate-200 shrink-0">
                 <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 shrink-0">
                   <div class="font-bold flex items-center gap-2 text-slate-800"><el-icon class="text-purple-500"><Document /></el-icon> 智能审图专家报告</div>
                 </div>
@@ -1018,11 +1018,11 @@ const saveRecord = async () => {
             </div>
 
             <!-- Step 2 View: Camera/Picture Upload -->
-            <div v-show="activeStep === 'step2'" class="absolute inset-0 flex">
-              <div class="flex-1 relative overflow-hidden" style="background-color: #eaeff5; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px;">
+            <div v-show="activeStep === 'step2'" class="absolute inset-0 step-pane">
+              <div class="flex-1 relative overflow-hidden canvas-stage" style="background-color: #eaeff5; background-image: radial-gradient(#d1d5db 1px, transparent 1px); background-size: 20px 20px;">
                 
                 <!-- 拖拽上传空状态 -->
-                <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-8 z-10">
+                <div v-show="!imgObj" class="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 z-10">
                   <div class="w-full max-w-3xl h-full max-h-[400px]">
                     <el-upload
                       drag
@@ -1047,7 +1047,7 @@ const saveRecord = async () => {
                 </div>
 
                 <!-- 结果画板区 (只要有图片就直接显示) -->
-                <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 z-20 overflow-auto">
+                <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
                   <!-- 画板 -->
                   <canvas
                     ref="canvasRef"
@@ -1060,7 +1060,7 @@ const saveRecord = async () => {
                   ></canvas>
 
                   <!-- 重新上传按钮 (悬浮) -->
-                  <div class="absolute top-6 left-6 flex gap-2 z-30">
+                  <div class="floating-action absolute top-4 md:top-6 left-4 md:left-6 flex gap-2 z-30">
                     <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
                       <el-button size="default" class="shadow-md bg-white text-slate-700 hover:text-blue-500 border-0">
                         <el-icon class="mr-1 font-bold text-lg"><RefreshRight /></el-icon> 重置与更换
@@ -1069,7 +1069,7 @@ const saveRecord = async () => {
                   </div>
 
                   <!-- 图例说明箱 -->
-                  <div class="absolute top-6 right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-w-[180px] z-30 transform transition-all" v-if="(result.predictions && result.predictions.length) || (complianceResult.status)">
+                  <div class="result-legend absolute top-4 md:top-6 right-4 md:right-6 bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] min-w-[180px] z-30 transform transition-all" v-if="(result.predictions && result.predictions.length) || (complianceResult.status)">
                     <div class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-2 mb-3 tracking-widest uppercase">
                        <el-icon class="mr-1 align-text-bottom"><InfoFilled/></el-icon> 结果与图例
                     </div>
@@ -1126,6 +1126,110 @@ const saveRecord = async () => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.workbench-aside {
+  width: 200px !important;
+  flex: 0 0 200px;
+}
+
+.workbench-main {
+  min-width: 0;
+}
+
+.config-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.config-main {
+  min-width: 0;
+  padding-right: 24px;
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.config-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.config-mode-switch {
+  flex: 1;
+  min-width: 0;
+}
+
+.config-panel {
+  min-height: 150px;
+}
+
+.summary-strip {
+  gap: 16px;
+}
+
+.config-side {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-self: stretch;
+}
+
+.control-card {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.workspace-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.workspace-toolbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.workspace-stage {
+  min-height: 480px;
+}
+
+.step-pane {
+  display: flex;
+}
+
+.step-pane-split {
+  gap: 0;
+}
+
+.step-content-pane {
+  min-width: 0;
+}
+
+.report-pane {
+  width: min(420px, 34vw);
+  min-width: 320px;
+}
+
+.canvas-stage {
+  padding: 12px;
+}
+
+.floating-action {
+  max-width: calc(100% - 32px);
+}
+
+.result-legend {
+  max-width: min(260px, calc(100% - 32px));
 }
 
 /* WorkBench-specific styles only */
@@ -1199,5 +1303,88 @@ const saveRecord = async () => {
 
 .ai-report-content :deep(strong) {
   color: #2563eb;
+}
+
+@media (max-width: 1279px) {
+  .config-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .config-main {
+    padding-right: 0;
+    padding-bottom: 20px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+}
+
+@media (max-width: 1024px) {
+  .workbench-shell {
+    flex-direction: column;
+  }
+
+  .workbench-aside {
+    width: 100% !important;
+    flex: none;
+    max-height: none;
+  }
+
+  .step-pane-split {
+    flex-direction: column;
+  }
+
+  .step-content-pane {
+    border-right: none !important;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .report-pane {
+    width: 100%;
+    min-width: 0;
+    min-height: 260px;
+    border-left: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .config-header {
+    flex-direction: column;
+  }
+
+  .config-title {
+    white-space: normal;
+  }
+
+  .summary-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .result-legend {
+    left: 16px;
+    right: 16px;
+    top: auto !important;
+    bottom: 16px;
+    max-width: none;
+  }
+
+  .floating-action {
+    right: 16px;
+    left: 16px !important;
+    top: 16px !important;
+  }
+
+  .floating-action :deep(.el-upload) {
+    width: 100%;
+  }
+
+  .floating-action :deep(.el-button) {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .workspace-stage {
+    min-height: 560px;
+  }
 }
 </style>

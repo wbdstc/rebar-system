@@ -21,6 +21,13 @@ onMounted(async () => {
 
 <template>
   <div class="home-container">
+    <div class="hero-panel">
+      <!-- <div class="hero-badge">AI + 工程质检工作台</div> -->
+      <h1 class="main-title">钢筋工程智能管控平台</h1>
+      <p class="hero-subtitle">
+        围绕隐蔽验收、进场材料、轧印识别与检测记录，建立更清晰、更高效的现场质检流程。
+      </p>
+    </div>
     <!-- 背景图案 (将在CSS中应用用户提供的背景图) -->
 
     <!-- 顶部标题 -->
@@ -156,7 +163,7 @@ onMounted(async () => {
 }
 
 .home-container {
-  min-height: 100vh;
+  min-height: 80vh;
   position: relative;
   /* 多层渐变背景，增加深度 (如果有背景图，将在此基础上覆盖) */
   background:
@@ -170,48 +177,89 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 48px 24px 24px;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
+.hero-panel {
+  width: min(1120px, 100%);
+  margin-top: 0;
+  margin-bottom: 20px;
+  padding: 14px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.66) 0%, rgba(255, 255, 255, 0.34) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(14px) saturate(135%);
+  -webkit-backdrop-filter: blur(14px) saturate(135%);
+  box-shadow: 0 12px 32px rgba(22, 54, 120, 0.08);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
 /* 主标题 — 渐变文字 + 文字阴影 */
 .main-title {
-  margin-top: 10vh;
-  margin-bottom: 6vh;
-  font-size: 46px;
+  margin: 0;
+  font-size: clamp(26px, 3vw, 38px);
   font-weight: 900;
   background: linear-gradient(135deg, #0A1628 0%, #1A3A7C 50%, #2B5FBF 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  letter-spacing: 4px;
+  letter-spacing: 1px;
   z-index: 1;
   text-shadow: none;
   filter: drop-shadow(0 2px 4px rgba(10, 22, 40, 0.15));
 }
 
+.hero-subtitle {
+  max-width: 420px;
+  color: rgba(22, 43, 86, 0.78);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.home-container > .main-title {
+  display: none;
+}
+
 /* 2x2 网格容器 */
 .card-grid {
   display: grid;
-  grid-template-columns: repeat(2, 480px);
-  gap: 40px;
+  width: min(1120px, 100%);
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 28px;
   z-index: 1;
 }
 
 /* 响应式：针对小屏幕 */
-@media (max-width: 1050px) {
+@media (max-width: 900px) {
   .card-grid {
     grid-template-columns: 1fr;
-    max-width: 480px;
-    width: 90%;
   }
 }
 
 /* ========== 统一的卡片基础样式 (凹凸+玻璃) ========== */
 .card {
-  height: 165px;
-  border-radius: 24px;
-  padding: 0 40px;
+  min-height: 188px;
+  border-radius: 28px;
+  padding: 28px 32px;
   display: flex;
   align-items: center;
   gap: 28px;
@@ -319,14 +367,14 @@ onMounted(async () => {
 .card-white h3 {
   color: #0E1A35;
   font-size: 24px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-weight: 800;
 }
 .card-white p {
   color: #8A96AC;
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
 /* 2. 亮蓝玻璃渐变卡片 (进场材料) */
@@ -380,15 +428,15 @@ onMounted(async () => {
 .card-blue h3 {
   color: #ffffff;
   font-size: 24px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-weight: 800;
   text-shadow: 0 1px 3px rgba(0, 40, 120, 0.3);
 }
 .card-blue p {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
 /* 3. 深蓝玻璃渐变卡片 (原材微观、数据中心) */
@@ -442,22 +490,23 @@ onMounted(async () => {
 .card-dark h3 {
   color: #ffffff;
   font-size: 24px;
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-weight: 800;
   text-shadow: 0 1px 4px rgba(0, 10, 40, 0.4);
 }
 .card-dark p {
   color: rgba(200, 215, 240, 0.75);
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.7;
 }
 
 /* ========== 底部状态栏 (磨砂玻璃) ========== */
 
 .status-container {
   margin-top: auto;
-  margin-bottom: 30px;
+  margin-bottom: 12px;
+  padding-top: 40px;
   padding-bottom: 20px;
   z-index: 1;
   display: flex;
@@ -471,13 +520,15 @@ onMounted(async () => {
 /* 文字块 — 磨砂玻璃背景 */
 .status-items {
   display: flex;
-  gap: 40px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px 24px;
   z-index: 2;
   margin-bottom: 16px;
   background: rgba(10, 25, 60, 0.45);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  padding: 14px 40px;
+  padding: 16px 28px;
   border-radius: 40px;
   border: 1px solid rgba(80, 140, 255, 0.15);
   box-shadow:
@@ -493,6 +544,7 @@ onMounted(async () => {
   color: rgba(210, 230, 255, 0.9);
   font-size: 14px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* 绿色指示灯发光效果 */
@@ -514,5 +566,42 @@ onMounted(async () => {
     radial-gradient(ellipse at 70% 80%, rgba(0, 200, 255, 0.06) 0%, transparent 40%);
   pointer-events: none;
   z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .home-container {
+    padding: 24px 16px 20px;
+  }
+
+  .hero-panel {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .hero-subtitle {
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .card {
+    min-height: 172px;
+    padding: 22px 20px;
+    gap: 18px;
+    align-items: flex-start;
+  }
+
+  .icon-circle {
+    width: 72px;
+    height: 72px;
+  }
+
+  .status-items {
+    width: 100%;
+    border-radius: 24px;
+  }
 }
 </style>
