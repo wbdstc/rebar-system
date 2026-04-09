@@ -118,7 +118,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <el-container class="flex flex-col h-screen bg-records bg-cover bg-center bg-no-repeat bg-fixed text-slate-800 relative">
+  <el-container class="flex flex-col min-h-screen bg-records bg-cover bg-center bg-no-repeat bg-fixed text-slate-800 relative">
     <div class="absolute inset-0 bg-white/40 backdrop-blur-sm pointer-events-none"></div>
 
     <el-header class="page-header bg-white/70 backdrop-blur-2xl border-b border-white/60 shadow-sm relative z-10">

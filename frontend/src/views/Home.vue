@@ -22,8 +22,9 @@ onMounted(async () => {
 <template>
   <div class="home-container">
     <div class="hero-panel">
-      <!-- <div class="hero-badge">AI + 工程质检工作台</div> -->
-      <h1 class="main-title">钢筋工程智能管控平台</h1>
+      <h1 class="main-title"><img src="../assets/logo.png" alt="背景图" class="background-image" /></h1>
+      <h3>————钢筋工程智能管控平台</h3>
+
       <p class="hero-subtitle">
         围绕隐蔽验收、进场材料、轧印识别与检测记录，建立更清晰、更高效的现场质检流程。
       </p>
@@ -31,7 +32,8 @@ onMounted(async () => {
     <!-- 背景图案 (将在CSS中应用用户提供的背景图) -->
 
     <!-- 顶部标题 -->
-    <h1 class="main-title">钢筋工程智能管控平台</h1>
+    <h1 class="main-title">平法智瞳</h1>
+    
 
     <!-- 宫格卡片 -->
     <div class="card-grid">
@@ -163,7 +165,7 @@ onMounted(async () => {
 }
 
 .home-container {
-  min-height: 80vh;
+  min-height: 100vh;
   position: relative;
   /* 多层渐变背景，增加深度 (如果有背景图，将在此基础上覆盖) */
   background:
@@ -178,7 +180,7 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   padding: 48px 24px 24px;
-  overflow: hidden;
+  overflow-x: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 

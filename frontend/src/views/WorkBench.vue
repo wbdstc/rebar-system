@@ -690,7 +690,7 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <el-container class="inspection-container h-screen text-slate-800 relative flex flex-col overflow-hidden">
+  <el-container class="inspection-container min-h-screen text-slate-800 relative flex flex-col overflow-x-hidden">
     <!-- 顶部导航栏 (工程蓝底色) -->
     <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600/80 backdrop-blur-md text-white shadow-md h-14 shrink-0 border-b border-blue-500/30">
       <div class="flex items-center gap-4">
@@ -710,7 +710,7 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="workbench-shell relative z-10 overflow-hidden flex-1 p-4 md:p-6 gap-4 md:gap-6">
+    <el-container class="workbench-shell relative z-10 flex-1 p-4 md:p-6 gap-4 md:gap-6">
       <!-- 左侧导航栏 -->
       <el-aside width="200px" class="workbench-aside bg-blue-600/80 backdrop-blur-xl rounded-2xl border border-blue-500/30 shadow-xl flex flex-col z-20 overflow-hidden">
         <div class="p-4 border-b border-blue-500/30 flex items-center gap-2 text-blue-100 text-xs font-bold uppercase tracking-wider">
@@ -1047,12 +1047,12 @@ const saveRecord = async () => {
                 </div>
 
                 <!-- 结果画板区 (只要有图片就直接显示) -->
-                <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
+                <div v-show="imgObj" class="workspace-canvas-wrap absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
                   <!-- 画板 -->
                   <canvas
                     ref="canvasRef"
-                    class="rounded shadow-xl bg-white max-w-full"
-                    :style="{ cursor: needsCalibration ? 'crosshair' : 'default', minWidth: '400px', objectFit: 'contain' }"
+                    class="workspace-canvas rounded shadow-xl bg-white max-w-full max-h-full"
+                    :style="{ cursor: needsCalibration ? 'crosshair' : 'default', objectFit: 'contain' }"
                     @mousedown="handleMouseDown"
                     @mousemove="handleMouseMove"
                     @mouseup="handleMouseUp"
@@ -1222,6 +1222,19 @@ const saveRecord = async () => {
 
 .canvas-stage {
   padding: 12px;
+}
+
+.workspace-canvas-wrap {
+  min-height: 0;
+}
+
+.workspace-canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 1;
 }
 
 .floating-action {

@@ -238,7 +238,7 @@ const saveRecord = async () => {
 </script>
 
 <template>
-  <el-container class="inspection-container h-screen text-slate-800 relative flex flex-col overflow-hidden">
+  <el-container class="inspection-container min-h-screen text-slate-800 relative flex flex-col overflow-x-hidden">
     <!-- 顶部导航栏 -->
     <el-header class="relative z-20 flex justify-between items-center px-6 bg-blue-600/80 backdrop-blur-md text-white shadow-md h-14 shrink-0 border-b border-blue-500/30">
       <div class="flex items-center gap-4">
@@ -258,7 +258,7 @@ const saveRecord = async () => {
       </div>
     </el-header>
 
-    <el-container class="material-shell relative z-10 overflow-hidden flex-1 p-4 md:p-6 gap-4 md:gap-6">
+    <el-container class="material-shell relative z-10 flex-1 p-4 md:p-6 gap-4 md:gap-6">
       <!-- 左侧参数面板 -->
       <el-aside width="320px" class="material-aside bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 flex flex-col z-20 overflow-y-auto">
         <div class="p-4 border-b border-slate-100 flex items-center gap-2 text-slate-800 text-sm font-bold">
@@ -320,7 +320,7 @@ const saveRecord = async () => {
       </el-aside>
 
       <!-- 主工作区 -->
-      <el-main class="material-main bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full h-full relative">
+      <el-main class="material-main bg-white/60 backdrop-blur-xl rounded-2xl shadow-xl border border-white/50 p-0 flex flex-col overflow-hidden w-full relative">
         <!-- 顶部操作栏 -->
         <div class="material-toolbar px-4 md:px-5 py-4 border-b border-white/40 shrink-0 bg-white/50">
           <div class="text-slate-700 font-bold flex items-center gap-2">
@@ -371,11 +371,11 @@ const saveRecord = async () => {
           </div>
 
           <!-- Canvas Area -->
-          <div v-show="imgObj" class="absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
+          <div v-show="imgObj" class="material-canvas-wrap absolute inset-0 w-full h-full flex items-center justify-center p-4 md:p-6 z-20 overflow-auto">
             <canvas
               ref="canvasRef"
-              class="rounded shadow-xl bg-white max-w-full"
-              style="cursor: crosshair; min-width: 400px; object-fit: contain;"
+              class="material-canvas rounded shadow-xl bg-white max-w-full max-h-full"
+              style="cursor: crosshair; object-fit: contain;"
               @mousedown="handleMouseDown"
               @mousemove="handleMouseMove"
               @mouseup="handleMouseUp"
@@ -470,6 +470,19 @@ const saveRecord = async () => {
 
 .material-stage {
   min-height: 520px;
+}
+
+.material-canvas-wrap {
+  min-height: 0;
+}
+
+.material-canvas {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 1;
 }
 
 .result-stat-grid {

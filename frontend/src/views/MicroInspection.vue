@@ -31,23 +31,14 @@ const hasResult = computed(() => materialResult.success)
 
 const stageStatus = computed(() => {
   if (hasResult.value) {
-    return {
-      label: '识别完成',
-      className: 'is-success'
-    }
+    return { label: '识别完成', type: 'success' }
   }
 
   if (hasImage.value) {
-    return {
-      label: '图像已就绪',
-      className: 'is-ready'
-    }
+    return { label: '已上传', type: 'ready' }
   }
 
-  return {
-    label: '等待上传',
-    className: 'is-idle'
-  }
+  return { label: '待上传', type: 'idle' }
 })
 
 const handleFileChange = (file) => {
@@ -138,7 +129,7 @@ const saveRecord = async () => {
       <div class="micro-header-title">
         <span>原材微观检测</span>
         <span class="micro-header-divider"></span>
-        <span class="micro-header-subtitle">AI 钢筋轧印智能识别</span>
+        <span class="micro-header-subtitle">AI 钢筋轧印识别</span>
       </div>
 
       <div class="micro-header-side micro-header-side-right">
@@ -151,207 +142,142 @@ const saveRecord = async () => {
 
     <el-main class="micro-page">
       <section class="micro-shell">
-        <div class="micro-main">
-          <div class="micro-layout">
-            <section class="micro-stage-panel">
-              <div class="micro-toolbar">
-                <div class="micro-toolbar-title">
-                  <div class="micro-section-label">
-                    <el-icon class="text-purple-500"><View /></el-icon>
-                    <span>钢筋轧印特写上传</span>
-                  </div>
-                  <div class="micro-stage-status" :class="stageStatus.className">
-                    <span class="micro-stage-status-dot"></span>
-                    <span>{{ stageStatus.label }}</span>
-                  </div>
-                </div>
-
-                <div class="micro-toolbar-actions">
-                  <el-button v-if="hasImage" text type="danger" @click="resetAll">
-                    <el-icon class="mr-1"><Delete /></el-icon>
-                    清除
-                  </el-button>
-
-                  <el-button
-                    type="primary"
-                    :loading="isLoading"
-                    loading-text="AI 识别中..."
-                    :disabled="!imageFile"
-                    class="micro-primary-btn"
-                    @click="startMaterialVerify"
-                  >
-                    <el-icon class="mr-2"><Cpu /></el-icon>
-                    AI 轧印识别
-                  </el-button>
-                </div>
+        <section class="micro-card micro-stage-card">
+          <div class="micro-toolbar">
+            <div class="micro-toolbar-title">
+              <div class="micro-section-label">
+                <el-icon class="text-purple-500"><View /></el-icon>
+                <span>钢筋轧印特写</span>
               </div>
-
-              <div class="micro-stage-intro">
-                <div class="micro-stage-copy">
-                  <p class="micro-stage-eyebrow">更聚焦的特写，更稳定的识别结果</p>
-                  <h3>把页面重心放回图像本身，让识别流程更从容</h3>
-                  <p class="micro-stage-description">
-                    建议画面保留 1 至 2 根钢筋，轧印区域尽量居中，减少强反光与透视变形。上传后可直接复用右侧结果完成入库。
-                  </p>
-                </div>
-
-                <div class="micro-stage-tips">
-                  <span>高清近拍</span>
-                  <span>轧印居中</span>
-                  <span>减少反光</span>
-                </div>
+              <div class="micro-stage-status" :class="`is-${stageStatus.type}`">
+                <span class="micro-stage-status-dot"></span>
+                <span>{{ stageStatus.label }}</span>
               </div>
+            </div>
 
-              <div class="micro-stage">
-                <div v-if="!hasImage" class="micro-upload-wrap">
-                  <el-upload
-                    drag
-                    :auto-upload="false"
-                    :show-file-list="false"
-                    accept="image/*"
-                    @change="handleFileChange"
-                    class="dashboard-upload micro-upload"
-                  >
-                    <div class="micro-upload-inner">
-                      <div class="micro-upload-icon">
-                        <el-icon :size="52" class="text-purple-500"><Camera /></el-icon>
-                      </div>
-                      <p class="micro-upload-title">上传钢筋轧印特写照片</p>
-                      <p class="micro-upload-description">
-                        请拍摄钢筋表面轧印标识，如 4E22、5E25 等清晰近景图像
-                      </p>
-                      <div class="micro-upload-tags">
-                        <span>自动识别牌号</span>
-                        <span>自动识别抗震标记</span>
-                        <span>自动提取公称直径</span>
-                      </div>
-                    </div>
-                  </el-upload>
-                </div>
+            <div class="micro-toolbar-actions">
+              <el-button v-if="hasImage" text type="danger" @click="resetAll">
+                <el-icon class="mr-1"><Delete /></el-icon>
+                清除
+              </el-button>
 
-                <div v-else class="micro-preview-shell">
-                  <img :src="imagePreview" alt="钢筋轧印预览" class="micro-preview-image" />
-
-                  <div class="micro-floating-action">
-                    <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
-                      <el-button class="micro-float-btn">
-                        <el-icon class="mr-1 text-lg"><RefreshRight /></el-icon>
-                        重新上传
-                      </el-button>
-                    </el-upload>
-                  </div>
-
-                  <div class="micro-preview-caption">
-                    <div>
-                      <div class="micro-preview-caption-label">当前图像</div>
-                      <div class="micro-preview-caption-title">已载入轧印特写，可直接启动 AI 识别</div>
-                    </div>
-                    <div class="micro-preview-caption-badge">{{ isLoading ? '识别中' : '待识别' }}</div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <aside class="micro-results">
-              <div class="micro-results-head">
-                <div class="micro-section-label micro-section-label-dark">
-                  <el-icon class="text-purple-500"><DataAnalysis /></el-icon>
-                  <span>AI 微观识别结果</span>
-                </div>
-                <p>
-                  结合视觉模型与语义规则，自动解析钢筋轧印中的牌号、抗震标记与公称直径，减少人工录入和判断成本。
-                </p>
-              </div>
-
-              <div class="micro-results-body">
-                <div class="micro-info-card">
-                  <div class="micro-info-icon">
-                    <el-icon><Opportunity /></el-icon>
-                  </div>
-                  <div class="micro-info-content">
-                    <strong>微观标牌语义识别</strong>
-                    <span>系统会优先锁定轧印区域，再结合行业规则输出可直接入库的结构化结果。</span>
-                  </div>
-                </div>
-
-                <template v-if="hasResult">
-                  <div class="micro-success-card">
-                    <div class="micro-success-head">
-                      <div class="micro-success-title">
-                        <el-icon class="text-lg"><CircleCheckFilled /></el-icon>
-                        <span>识别成功</span>
-                      </div>
-                      <el-tag type="success" effect="dark" class="micro-success-tag">结果可信</el-tag>
-                    </div>
-
-                    <div class="micro-stat-grid">
-                      <div class="micro-stat-card micro-stat-card-primary">
-                        <span class="micro-stat-label">识别牌号</span>
-                        <strong class="micro-stat-value micro-stat-value-primary">{{ materialResult.material_grade }}</strong>
-                      </div>
-
-                      <div class="micro-stat-card">
-                        <span class="micro-stat-label">抗震标识</span>
-                        <strong class="micro-stat-value">{{ materialResult.is_seismic ? '满足要求' : '未标注' }}</strong>
-                        <span class="micro-stat-note">{{ materialResult.is_seismic ? '检测到 E 标识' : '未检测到 E 标识' }}</span>
-                      </div>
-
-                      <div class="micro-stat-card">
-                        <span class="micro-stat-label">公称直径</span>
-                        <strong class="micro-stat-value">φ{{ materialResult.diameter }}<span class="micro-stat-unit">mm</span></strong>
-                        <span class="micro-stat-note">可直接用于现场核验</span>
-                      </div>
-
-                      <div class="micro-stat-card">
-                        <span class="micro-stat-label">建议动作</span>
-                        <strong class="micro-stat-value">提取入库</strong>
-                        <span class="micro-stat-note">保存到检测记录中心</span>
-                      </div>
-                    </div>
-
-                    <div v-if="materialResult.raw_text" class="micro-raw-card">
-                      <span class="micro-stat-label">AI 原始识别文本</span>
-                      <div class="micro-raw-text">{{ materialResult.raw_text }}</div>
-                    </div>
-                  </div>
-
-                  <div class="micro-result-actions">
-                    <el-button type="success" class="micro-save-btn" @click="saveRecord">
-                      <el-icon class="mr-1"><DocumentChecked /></el-icon>
-                      提取并入库
-                    </el-button>
-                  </div>
-                </template>
-
-                <div v-else-if="!isLoading" class="micro-empty-state">
-                  <el-icon :size="66" class="micro-empty-icon"><PictureFilled /></el-icon>
-                  <h4>结果区正在等待一张清晰的轧印特写</h4>
-                  <p>上传后点击“AI 轧印识别”，右侧会自动生成结构化结果与入库动作。</p>
-                  <div class="micro-empty-grid">
-                    <div class="micro-empty-item">
-                      <span>01</span>
-                      <strong>上传特写</strong>
-                    </div>
-                    <div class="micro-empty-item">
-                      <span>02</span>
-                      <strong>AI 解析</strong>
-                    </div>
-                    <div class="micro-empty-item">
-                      <span>03</span>
-                      <strong>提取入库</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="micro-loading-state">
-                  <el-icon :size="50" class="micro-loading-icon"><Loading /></el-icon>
-                  <h4>AI 正在识别轧印信息</h4>
-                  <p>系统正在分析牌号、抗震标记与公称直径，请稍候片刻。</p>
-                </div>
-              </div>
-            </aside>
+              <el-button
+                type="primary"
+                :loading="isLoading"
+                loading-text="AI 识别中..."
+                :disabled="!imageFile"
+                class="micro-primary-btn"
+                @click="startMaterialVerify"
+              >
+                <el-icon class="mr-2"><Cpu /></el-icon>
+                AI 轧印识别
+              </el-button>
+            </div>
           </div>
-        </div>
+
+          <div class="micro-hint">
+            <el-icon><InfoFilled /></el-icon>
+            <span>上传清晰近拍，保证轧印居中</span>
+          </div>
+
+          <div class="micro-stage">
+            <div v-if="!hasImage" class="micro-upload-wrap">
+              <el-upload
+                drag
+                :auto-upload="false"
+                :show-file-list="false"
+                accept="image/*"
+                @change="handleFileChange"
+                class="dashboard-upload micro-upload"
+              >
+                <div class="micro-upload-inner">
+                  <div class="micro-upload-icon">
+                    <el-icon :size="48" class="text-purple-500"><Camera /></el-icon>
+                  </div>
+                  <p class="micro-upload-title">上传钢筋轧印特写</p>
+                  <p class="micro-upload-description">示例：4E22、5E25 等清晰近景图像</p>
+                </div>
+              </el-upload>
+            </div>
+
+            <div v-else class="micro-preview-shell">
+              <img :src="imagePreview" alt="钢筋轧印预览" class="micro-preview-image" />
+
+              <div class="micro-floating-action">
+                <el-upload :auto-upload="false" :show-file-list="false" accept="image/*" @change="handleFileChange">
+                  <el-button class="micro-float-btn">
+                    <el-icon class="mr-1 text-lg"><RefreshRight /></el-icon>
+                    重新上传
+                  </el-button>
+                </el-upload>
+              </div>
+
+              <div class="micro-preview-badge">{{ isLoading ? '识别中' : '待识别' }}</div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="micro-card micro-result-card">
+          <div class="micro-result-head">
+            <div class="micro-section-label micro-section-label-dark">
+              <el-icon class="text-purple-500"><DataAnalysis /></el-icon>
+              <span>AI 识别结果</span>
+            </div>
+            <div class="micro-result-tags">
+              <span>牌号</span>
+              <span>抗震</span>
+              <span>直径</span>
+            </div>
+          </div>
+
+          <div class="micro-result-body">
+            <template v-if="hasResult">
+              <div class="micro-success-head">
+                <div class="micro-success-title">
+                  <el-icon class="text-lg"><CircleCheckFilled /></el-icon>
+                  <span>识别成功</span>
+                </div>
+                <el-tag type="success" effect="dark" class="micro-success-tag">可入库</el-tag>
+              </div>
+
+              <div class="micro-stat-grid micro-stat-grid-compact">
+                <div class="micro-stat-card micro-stat-card-primary">
+                  <span class="micro-stat-label">识别牌号</span>
+                  <strong class="micro-stat-value micro-stat-value-primary">{{ materialResult.material_grade }}</strong>
+                </div>
+
+                <div class="micro-stat-card">
+                  <span class="micro-stat-label">抗震标识</span>
+                  <strong class="micro-stat-value">{{ materialResult.is_seismic ? '满足要求' : '未标注' }}</strong>
+                </div>
+
+                <div class="micro-stat-card">
+                  <span class="micro-stat-label">公称直径</span>
+                  <strong class="micro-stat-value">φ{{ materialResult.diameter }}<span class="micro-stat-unit">mm</span></strong>
+                </div>
+              </div>
+
+              <div class="micro-result-actions">
+                <el-button type="success" class="micro-save-btn" @click="saveRecord">
+                  <el-icon class="mr-1"><DocumentChecked /></el-icon>
+                  提取并入库
+                </el-button>
+              </div>
+            </template>
+
+            <div v-else-if="!isLoading" class="micro-empty-state">
+              <el-icon :size="64" class="micro-empty-icon"><PictureFilled /></el-icon>
+              <h4>等待上传轧印特写</h4>
+              <p>上传后点击“AI 轧印识别”</p>
+            </div>
+
+            <div v-else class="micro-empty-state">
+              <el-icon :size="48" class="micro-loading-icon"><Loading /></el-icon>
+              <h4>AI 正在识别</h4>
+              <p>请稍候</p>
+            </div>
+          </div>
+        </aside>
       </section>
     </el-main>
   </el-container>
@@ -364,7 +290,7 @@ const saveRecord = async () => {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
   background:
     radial-gradient(circle at 18% 0%, rgba(120, 174, 255, 0.12) 0%, transparent 34%),
     radial-gradient(circle at 82% 100%, rgba(110, 85, 255, 0.08) 0%, transparent 32%),
@@ -436,44 +362,30 @@ const saveRecord = async () => {
 
 .micro-page {
   flex: 1;
-  min-height: 0;
-  padding: 14px 18px 16px;
-  overflow: hidden;
+  padding: 16px 18px 18px;
 }
 
 .micro-shell {
-  width: min(1380px, 100%);
-  height: 100%;
-  min-height: 0;
+  width: min(1320px, 100%);
   margin: 0 auto;
-}
-
-.micro-main {
-  height: 100%;
-  min-height: 0;
-  border-radius: 30px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(22px) saturate(140%);
-  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
-}
-
-.micro-layout {
-  height: 100%;
-  min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1.14fr) minmax(360px, 410px);
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 18px;
+  align-items: stretch;
 }
 
-.micro-stage-panel {
-  min-width: 0;
-  min-height: 0;
+.micro-card {
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.66);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(145%);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.micro-stage-card {
   display: flex;
   flex-direction: column;
-  background:
-    radial-gradient(circle at 12% 14%, rgba(139, 92, 246, 0.06) 0%, transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.44) 0%, rgba(248, 250, 252, 0.72) 100%);
 }
 
 .micro-toolbar {
@@ -481,8 +393,7 @@ const saveRecord = async () => {
   align-items: flex-start;
   justify-content: space-between;
   gap: 14px;
-  padding: 16px 20px 14px;
-  background: rgba(255, 255, 255, 0.44);
+  padding: 18px 20px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.55);
 }
 
@@ -514,7 +425,6 @@ const saveRecord = async () => {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.04em;
 }
 
 .micro-stage-status-dot {
@@ -523,7 +433,7 @@ const saveRecord = async () => {
   border-radius: 999px;
   background: currentColor;
   box-shadow: 0 0 0 4px currentColor;
-  opacity: 0.35;
+  opacity: 0.28;
 }
 
 .micro-stage-status.is-idle {
@@ -560,94 +470,32 @@ const saveRecord = async () => {
   box-shadow: 0 14px 28px rgba(109, 40, 217, 0.24);
 }
 
-.micro-stage-intro {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 20px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.55);
-}
-
-.micro-stage-copy {
-  max-width: 620px;
-}
-
-.micro-stage-eyebrow {
-  margin: 0 0 4px;
-  color: #7c3aed;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.micro-stage-copy h3 {
-  margin: 0;
-  color: #0f172a;
-  max-width: 560px;
-  font-size: clamp(18px, 1.35vw, 24px);
-  font-weight: 900;
-  line-height: 1.2;
-}
-
-.micro-stage-description {
-  margin: 8px 0 0;
-  max-width: 560px;
-  color: #475569;
-  font-size: 13px;
-  line-height: 1.7;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-}
-
-.micro-stage-tips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-start;
+.micro-hint {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
-}
-
-.micro-stage-tips span {
-  padding: 7px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(196, 181, 253, 0.72);
+  padding: 12px 20px 0;
   color: #6d28d9;
-  font-size: 11px;
-  font-weight: 700;
-  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.08);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .micro-stage {
-  flex: 1;
-  min-height: 0;
-  padding: 16px 20px 18px;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  overflow: hidden;
+  min-height: 520px;
+  padding: 16px 20px 20px;
   background-color: rgba(248, 250, 252, 0.52);
   background-image: radial-gradient(rgba(148, 163, 184, 0.45) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
 .micro-upload-wrap,
-.micro-preview-shell {
-  width: min(100%, 900px);
-  height: 100%;
-  min-height: 0;
-}
-
+.micro-preview-shell,
 .micro-upload {
-  height: 100%;
+  min-height: 100%;
 }
 
 .micro-upload-inner {
-  height: 100%;
-  min-height: 340px;
+  min-height: 480px;
   padding: 28px 22px;
   display: flex;
   flex-direction: column;
@@ -657,8 +505,8 @@ const saveRecord = async () => {
 }
 
 .micro-upload-icon {
-  width: 90px;
-  height: 90px;
+  width: 88px;
+  height: 88px;
   margin-bottom: 18px;
   border-radius: 999px;
   display: flex;
@@ -672,65 +520,30 @@ const saveRecord = async () => {
 .micro-upload-title {
   margin: 0;
   color: #0f172a;
-  font-size: clamp(18px, 1.4vw, 24px);
+  font-size: clamp(20px, 1.6vw, 26px);
   font-weight: 900;
 }
 
 .micro-upload-description {
-  max-width: 560px;
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   color: #64748b;
   font-size: 13px;
   line-height: 1.7;
 }
 
-.micro-upload-tags {
-  margin-top: 16px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.micro-upload-tags span {
-  padding: 8px 12px;
-  border-radius: 999px;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(196, 181, 253, 0.72);
-  color: #7c3aed;
-  font-size: 11px;
-  font-weight: 700;
-}
-
 .micro-preview-shell {
   position: relative;
-  overflow: hidden;
+  min-height: 480px;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 60px 18px 68px;
-  border-radius: 30px;
+  padding: 60px 18px 18px;
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.7);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(248, 250, 252, 0.96) 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 24px 48px rgba(15, 23, 42, 0.06);
-}
-
-.micro-preview-shell::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at top right, rgba(192, 132, 252, 0.12) 0%, transparent 28%),
-    radial-gradient(circle at bottom left, rgba(96, 165, 250, 0.08) 0%, transparent 28%);
-  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84) 0%, rgba(248, 250, 252, 0.96) 100%);
 }
 
 .micro-preview-image {
-  position: relative;
-  z-index: 1;
   max-width: 100%;
   max-height: 100%;
   border-radius: 20px;
@@ -754,129 +567,53 @@ const saveRecord = async () => {
   box-shadow: 0 14px 28px rgba(15, 23, 42, 0.1);
 }
 
-.micro-preview-caption {
+.micro-preview-badge {
   position: absolute;
-  left: 16px;
   right: 16px;
   bottom: 16px;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(16px);
-  color: #f8fafc;
-}
-
-.micro-preview-caption-label {
-  margin-bottom: 2px;
-  color: rgba(191, 219, 254, 0.88);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.micro-preview-caption-title {
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.micro-preview-caption-badge {
-  padding: 7px 12px;
+  padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(167, 139, 250, 0.18);
-  color: #ddd6fe;
+  background: rgba(15, 23, 42, 0.72);
+  color: #f8fafc;
   font-size: 11px;
   font-weight: 800;
-  white-space: nowrap;
 }
 
-.micro-results {
-  min-width: 0;
-  min-height: 0;
+.micro-result-card {
   display: flex;
   flex-direction: column;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.74) 0%, rgba(248, 250, 252, 0.92) 100%);
-  border-left: 1px solid rgba(255, 255, 255, 0.58);
 }
 
-.micro-results-head {
-  padding: 16px 18px 14px;
+.micro-result-head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.78);
 }
 
-.micro-results-head p {
-  margin: 8px 0 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.7;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  overflow: hidden;
+.micro-result-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.micro-results-body {
+.micro-result-tags span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(196, 181, 253, 0.6);
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.micro-result-body {
   flex: 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 16px;
-  overflow-y: auto;
-}
-
-.micro-info-card {
-  display: flex;
-  gap: 12px;
-  padding: 14px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, rgba(245, 243, 255, 0.98) 0%, rgba(250, 245, 255, 0.88) 100%);
-  border: 1px solid rgba(221, 214, 254, 0.9);
-  box-shadow: 0 10px 24px rgba(124, 58, 237, 0.06);
-}
-
-.micro-info-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(139, 92, 246, 0.12);
-  color: #7c3aed;
-  flex: none;
-}
-
-.micro-info-content {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.micro-info-content strong {
-  color: #581c87;
-  font-size: 14px;
-}
-
-.micro-info-content span {
-  color: #7e22ce;
-  font-size: 12px;
-  line-height: 1.65;
-}
-
-.micro-success-card {
-  padding: 16px;
-  border-radius: 20px;
-  background: linear-gradient(180deg, rgba(236, 253, 245, 0.98) 0%, rgba(240, 253, 244, 0.88) 100%);
-  border: 1px solid rgba(167, 243, 208, 0.9);
-  box-shadow: 0 14px 30px rgba(16, 185, 129, 0.08);
 }
 
 .micro-success-head {
@@ -884,7 +621,6 @@ const saveRecord = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .micro-success-title {
@@ -906,15 +642,20 @@ const saveRecord = async () => {
   gap: 10px;
 }
 
+.micro-stat-grid-compact {
+  grid-template-columns: 1fr;
+}
+
 .micro-stat-card {
-  min-height: 96px;
+  min-height: 92px;
   display: flex;
   flex-direction: column;
+  justify-content: center;
   gap: 6px;
   padding: 14px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(220, 252, 231, 0.88);
+  border: 1px solid rgba(226, 232, 240, 0.88);
 }
 
 .micro-stat-card-primary {
@@ -923,14 +664,13 @@ const saveRecord = async () => {
 }
 
 .micro-stat-card-primary .micro-stat-label,
-.micro-stat-card-primary .micro-stat-value,
-.micro-stat-card-primary .micro-stat-note {
+.micro-stat-card-primary .micro-stat-value {
   color: #f0fdf4;
 }
 
 .micro-stat-label {
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -947,12 +687,6 @@ const saveRecord = async () => {
   font-size: 24px;
 }
 
-.micro-stat-note {
-  color: #64748b;
-  font-size: 11px;
-  line-height: 1.5;
-}
-
 .micro-stat-unit {
   margin-left: 4px;
   font-size: 12px;
@@ -960,28 +694,8 @@ const saveRecord = async () => {
   color: #64748b;
 }
 
-.micro-raw-card {
-  margin-top: 10px;
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px solid rgba(220, 252, 231, 0.9);
-}
-
-.micro-raw-text {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #334155;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-  font-size: 12px;
-  line-height: 1.55;
-  word-break: break-all;
-}
-
 .micro-result-actions {
-  margin-top: 2px;
+  margin-top: auto;
 }
 
 .micro-save-btn {
@@ -992,10 +706,9 @@ const saveRecord = async () => {
   box-shadow: 0 14px 28px rgba(16, 185, 129, 0.2);
 }
 
-.micro-empty-state,
-.micro-loading-state {
+.micro-empty-state {
   flex: 1;
-  min-height: 240px;
+  min-height: 280px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1016,52 +729,18 @@ const saveRecord = async () => {
   animation: spin 1s linear infinite;
 }
 
-.micro-empty-state h4,
-.micro-loading-state h4 {
+.micro-empty-state h4 {
   margin: 14px 0 6px;
   color: #1e293b;
   font-size: 16px;
   font-weight: 900;
 }
 
-.micro-empty-state p,
-.micro-loading-state p {
+.micro-empty-state p {
   margin: 0;
-  max-width: 280px;
   color: #64748b;
   font-size: 13px;
   line-height: 1.65;
-}
-
-.micro-empty-grid {
-  width: 100%;
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.micro-empty-item {
-  padding: 10px 8px;
-  border-radius: 14px;
-  background: rgba(245, 243, 255, 0.9);
-  border: 1px solid rgba(221, 214, 254, 0.8);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.micro-empty-item span {
-  color: #a78bfa;
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.1em;
-}
-
-.micro-empty-item strong {
-  color: #5b21b6;
-  font-size: 13px;
-  font-weight: 800;
 }
 
 @keyframes spin {
@@ -1074,40 +753,9 @@ const saveRecord = async () => {
   }
 }
 
-@media (max-width: 1360px) {
-  .micro-layout {
-    grid-template-columns: minmax(0, 1fr) 380px;
-  }
-
-  .micro-stage-copy h3 {
-    font-size: 22px;
-  }
-}
-
 @media (max-width: 1180px) {
-  .micro-page {
-    padding: 16px;
-    overflow: auto;
-  }
-
-  .micro-shell,
-  .micro-main,
-  .micro-layout {
-    height: auto;
-    min-height: auto;
-  }
-
-  .micro-layout {
+  .micro-shell {
     grid-template-columns: 1fr;
-  }
-
-  .micro-results {
-    border-left: none;
-    border-top: 1px solid rgba(226, 232, 240, 0.72);
-  }
-
-  .micro-stage {
-    overflow: visible;
   }
 }
 
@@ -1135,52 +783,33 @@ const saveRecord = async () => {
     padding: 12px;
   }
 
-  .micro-main {
+  .micro-shell {
+    gap: 12px;
+  }
+
+  .micro-card {
     border-radius: 22px;
   }
 
   .micro-toolbar,
-  .micro-stage-intro,
-  .micro-stage,
-  .micro-results-head,
-  .micro-results-body {
+  .micro-result-head,
+  .micro-result-body,
+  .micro-stage {
     padding-left: 16px;
     padding-right: 16px;
   }
 
-  .micro-toolbar,
-  .micro-stage-intro,
-  .micro-preview-caption {
+  .micro-toolbar {
     flex-direction: column;
     align-items: flex-start;
   }
 
-  .micro-stage {
-    min-height: 460px;
-    padding-bottom: 18px;
-  }
-
-  .micro-stage-tips {
-    justify-content: flex-start;
-  }
-
-  .micro-upload-inner {
-    min-height: 420px;
-    padding: 32px 18px;
-  }
-
-  .micro-upload-title {
-    font-size: 24px;
-  }
-
+  .micro-upload-inner,
   .micro-preview-shell {
-    min-height: 420px;
-    padding: 78px 16px 100px;
-    border-radius: 22px;
+    min-height: 380px;
   }
 
   .micro-floating-action {
-    top: 16px;
     left: 16px;
     right: 16px;
   }
@@ -1192,17 +821,6 @@ const saveRecord = async () => {
   .micro-float-btn {
     width: 100%;
     justify-content: center;
-  }
-
-  .micro-preview-caption {
-    left: 16px;
-    right: 16px;
-    bottom: 16px;
-  }
-
-  .micro-stat-grid,
-  .micro-empty-grid {
-    grid-template-columns: 1fr;
   }
 }
 </style>
